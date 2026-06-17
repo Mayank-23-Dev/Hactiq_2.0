@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Goal Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .goal-completed { text-decoration: line-through; opacity: 0.6; }
+        .calendar-day.has-goals::after {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 4px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            margin: 2px auto 0;
+        }
+        .calendar-day.all-completed { background-color: #dcfce7; }
+        .calendar-day.not-completed { background-color: #fee2e2; }
+        .toast {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-blue-600 text-2xl font-bold mr-8"><i class="fas fa-bullseye mr-2"></i>GoalTrack</span>
+                    <div class="hidden md:flex space-x-4">
+                        <button onclick="router.navigate('today')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600" data-view="today">Today</button>
+                        <button onclick="router.navigate('yesterday')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600" data-view="yesterday">Yesterday</button>
+                        <button onclick="router.navigate('calendar')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600" data-view="calendar">Calendar</button>
+                        <button onclick="router.navigate('stats')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600" data-view="stats">Stats</button>
+                        <button onclick="router.navigate('database')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600" data-view="database">All Goals</button>
+                        <button onclick="router.navigate('templates')" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600" data-view="templates">Templates</button>
+                    </div>
+                </div>
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="text-gray-500 hover:text-gray-600 focus:outline-none">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Navigation -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-gray-200">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="router.navigate('today')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Today</button>
+                <button onclick="router.navigate('yesterday')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Yesterday</button>
+                <button onclick="router.navigate('calendar')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Calendar</button>
+                <button onclick="router.navigate('stats')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Stats</button>
+                <button onclick="router.navigate('database')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">All Goals</button>
+                <button onclick="router.navigate('templates')" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Templates</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <!-- Today's Dashboard -->
+        <section id="view-today" class="view-section active">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-gray-900">Today's Dashboard</h1>
+                    <p id="today-date-display" class="text-gray-500 font-medium"></p>
+                </div>
+                <div class="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+                    <span class="text-blue-700 font-semibold">Today's Progress: <span id="today-completion-rate">0%</span></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left Column: Add Goal & Mood -->
+                <div class="space-y-8">
+                    <!-- Add Goal Form -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h2 class="text-xl font-bold mb-4 flex items-center">
+                            <i class="fas fa-plus-circle text-blue-500 mr-2"></i>Add New Goal
+                        </h2>
+                        <form id="add-goal-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Goal Title *</label>
+                                <input type="text" id="goal-title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="What do you want to achieve?">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                    <select id="goal-category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                        <option value="Health">Health</option>
+                                        <option value="Work">Work</option>
+                                        <option value="Personal">Personal</option>
+                                        <option value="Learning">Learning</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                    <select id="goal-priority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                        <option value="Low">Low</option>
+                                        <option value="Medium" selected>Medium</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                                <textarea id="goal-notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Add some context..."></textarea>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="submit" class="flex-grow bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+                                    Add Goal
+                                </button>
+                                <button type="button" id="load-template-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2 rounded-lg transition duration-200" title="Load from Template">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Mood & Energy Log -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h2 class="text-xl font-bold mb-4 flex items-center">
+                            <i class="fas fa-smile text-yellow-500 mr-2"></i>Daily Vibe
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">How's your Mood?</label>
+                                <div class="flex justify-between gap-2">
+                                    <button onclick="app.setMetadata('mood', 'Good')" data-mood="Good" class="mood-btn flex-1 py-2 px-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition">😊 Good</button>
+                                    <button onclick="app.setMetadata('mood', 'Okay')" data-mood="Okay" class="mood-btn flex-1 py-2 px-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition">😐 Okay</button>
+                                    <button onclick="app.setMetadata('mood', 'Bad')" data-mood="Bad" class="mood-btn flex-1 py-2 px-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition">😞 Bad</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Energy Levels?</label>
+                                <div class="flex justify-between gap-2">
+                                    <button onclick="app.setMetadata('energy', 'High')" data-energy="High" class="energy-btn flex-1 py-2 px-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition">⚡ High</button>
+                                    <button onclick="app.setMetadata('energy', 'Medium')" data-energy="Medium" class="energy-btn flex-1 py-2 px-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition">🔋 Med</button>
+                                    <button onclick="app.setMetadata('energy', 'Low')" data-energy="Low" class="energy-btn flex-1 py-2 px-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition">🔌 Low</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Goals List -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[400px]">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-gray-900">Today's Goals</h2>
+                            <span id="today-count" class="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded-full">0 Goals</span>
+                        </div>
+                        <div id="today-goals-list" class="space-y-4">
+                            <!-- Goal items injected here -->
+                            <div class="text-center py-20 text-gray-400 italic">
+                                No goals set for today yet. Start by adding one!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Yesterday's View -->
+        <section id="view-yesterday" class="view-section">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-gray-900">Yesterday's Reflection</h1>
+                    <p id="yesterday-date-display" class="text-gray-500 font-medium"></p>
+                </div>
+                <button onclick="app.carryForwardAll()" id="carry-all-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition hidden">
+                    Carry All Uncompleted
+                </button>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 min-h-[400px]">
+                <div id="yesterday-goals-list" class="space-y-4">
+                    <!-- Yesterday's goals injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar View -->
+        <section id="view-calendar" class="view-section">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                <h1 class="text-3xl font-extrabold text-gray-900">Goal Calendar</h1>
+                <div class="flex items-center space-x-2">
+                    <button onclick="calendar.prevMonth()" class="p-2 hover:bg-gray-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
+                    <h2 id="calendar-month-year" class="text-xl font-bold w-48 text-center">June 2026</h2>
+                    <button onclick="calendar.nextMonth()" class="p-2 hover:bg-gray-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
+                    <button onclick="calendar.goToToday()" class="ml-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-1 px-4 rounded-lg transition text-sm">Today</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Sun</div>
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Mon</div>
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Tue</div>
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Wed</div>
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Thu</div>
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Fri</div>
+                    <div class="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Sat</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7">
+                    <!-- Calendar cells injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats View -->
+        <section id="view-stats" class="view-section">
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-8">Insights & Progress</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- Streak Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+                    <div class="bg-orange-100 p-4 rounded-full mr-4 text-orange-600">
+                        <i class="fas fa-fire text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Current Streak</p>
+                        <h3 class="text-3xl font-bold text-gray-900"><span id="stats-streak">0</span> Days</h3>
+                    </div>
+                </div>
+                <!-- Today Completion Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+                    <div class="bg-green-100 p-4 rounded-full mr-4 text-green-600">
+                        <i class="fas fa-check-double text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Today's Rate</p>
+                        <h3 class="text-3xl font-bold text-gray-900" id="stats-today-rate">0%</h3>
+                    </div>
+                </div>
+                <!-- Total Goals Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+                    <div class="bg-blue-100 p-4 rounded-full mr-4 text-blue-600">
+                        <i class="fas fa-list-check text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium">Total Goals Set</p>
+                        <h3 class="text-3xl font-bold text-gray-900" id="stats-total-goals">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Weekly Summary Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-bold mb-6">Weekly Performance</h2>
+                    <canvas id="weeklyChart" height="250"></canvas>
+                </div>
+                <!-- Category Breakdown Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-bold mb-6">Category Breakdown (30 Days)</h2>
+                    <div class="flex justify-center">
+                        <div class="w-full max-w-[300px]">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Database View -->
+        <section id="view-database" class="view-section">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <h1 class="text-3xl font-extrabold text-gray-900">All Goals Database</h1>
+                <div class="flex gap-2">
+                    <button onclick="app.batchDelete()" class="bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2 px-4 rounded-lg transition text-sm">
+                        <i class="fas fa-trash-alt mr-2"></i>Delete Selected
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <input type="text" id="db-search" oninput="app.filterDatabase()" placeholder="Search goals..." class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="db-filter-category" onchange="app.filterDatabase()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                    <option value="">All Categories</option>
+                    <option value="Health">Health</option>
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Learning">Learning</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="db-filter-priority" onchange="app.filterDatabase()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                    <option value="">All Priorities</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <select id="db-filter-status" onchange="app.filterDatabase()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none">
+                    <option value="">All Statuses</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <input type="checkbox" id="db-select-all" onchange="app.toggleSelectAll(this)">
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Goal</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-goals-table" class="bg-white divide-y divide-gray-200">
+                        <!-- Table rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Templates View -->
+        <section id="view-templates" class="view-section">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-extrabold text-gray-900">Goal Templates</h1>
+                <button onclick="templates.openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                    <i class="fas fa-plus mr-2"></i>New Template
+                </button>
+            </div>
+
+            <div id="templates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Templates cards injected here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Container (Generic) -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <!-- Content injected via JS -->
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-lg z-[200] toast text-sm font-medium flex items-center">
+        <span id="toast-message">Message here</span>
+    </div>
+
+    <script>
+        // --- DATA STATE ---
+        const State = {
+            goals: JSON.parse(localStorage.getItem('gt_goals')) || [],
+            templates: JSON.parse(localStorage.getItem('gt_templates')) || [],
+            dailyMetadata: JSON.parse(localStorage.getItem('gt_metadata')) || {},
+
+            save() {
+                localStorage.setItem('gt_goals', JSON.stringify(this.goals));
+                localStorage.setItem('gt_templates', JSON.stringify(this.templates));
+                localStorage.setItem('gt_metadata', JSON.stringify(this.dailyMetadata));
+            },
+
+            init() {
+                if (this.goals.length === 0 && this.templates.length === 0) {
+                    this.seed();
+                }
+            },
+
+            seed() {
+                const today = app.getDateStr(new Date());
+                const yesterday = app.getDateStr(new Date(Date.now() - 86400000));
+                
+                this.goals = [
+                    { id: '1', title: 'Morning Exercise', category: 'Health', priority: 'High', completed: true, date: today, notes: 'Felt great!' },
+                    { id: '2', title: 'Learn 5 new JS patterns', category: 'Learning', priority: 'Medium', completed: false, date: today, notes: '' },
+                    { id: '3', title: 'Complete Project Report', category: 'Work', priority: 'High', completed: true, date: yesterday, notes: 'Sent to boss.' },
+                    { id: '4', title: 'Read 20 pages', category: 'Personal', priority: 'Low', completed: false, date: yesterday, notes: '' }
+                ];
+                this.templates = [
+                    { id: 't1', title: 'Meditation', category: 'Health', priority: 'Medium', notes: '15 minutes mindfulness' },
+                    { id: 't2', title: 'Inbox Zero', category: 'Work', priority: 'High', notes: 'Clear all emails' }
+                ];
+                this.dailyMetadata[today] = { mood: 'Good', energy: 'High' };
+                this.save();
+            }
+        };
+
+        // --- UTILITIES & APP LOGIC ---
+        const app = {
+            init() {
+                State.init();
+                this.updateTodayDisplay();
+                this.renderActiveView();
+                this.setupEventListeners();
+                this.updateNavActive();
+            },
+
+            getDateStr(date) {
+                return date.toISOString().split('T')[0];
+            },
+
+            formatDate(dateStr) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                return new Date(dateStr).toLocaleDateString(undefined, options);
+            },
+
+            updateTodayDisplay() {
+                document.getElementById('today-date-display').textContent = this.formatDate(this.getDateStr(new Date()));
+                document.getElementById('yesterday-date-display').textContent = this.formatDate(this.getDateStr(new Date(Date.now() - 86400000)));
+            },
+
+            setupEventListeners() {
+                document.getElementById('add-goal-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.addGoal();
+                });
+
+                document.getElementById('load-template-btn').addEventListener('click', () => {
+                    this.openTemplatePicker();
+                });
+
+                document.getElementById('mobile-menu-button').addEventListener('click', () => {
+                    document.getElementById('mobile-menu').classList.toggle('hidden');
+                });
+            },
+
+            // Navigation Handling
+            renderActiveView() {
+                const view = router.currentView;
+                document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+                document.getElementById(`view-${view}`).classList.add('active');
+                
+                if (view === 'today') this.renderToday();
+                if (view === 'yesterday') this.renderYesterday();
+                if (view === 'calendar') calendar.render();
+                if (view === 'stats') this.renderStats();
+                if (view === 'database') this.renderDatabase();
+                if (view === 'templates') templates.render();
+
+                document.getElementById('mobile-menu').classList.add('hidden');
+                this.updateNavActive();
+            },
+
+            updateNavActive() {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    if (link.dataset.view === router.currentView) {
+                        link.classList.add('text-blue-600', 'bg-blue-50');
+                    } else {
+                        link.classList.remove('text-blue-600', 'bg-blue-50');
+                    }
+                });
+            },
+
+            // Goal Actions
+            addGoal(customDate = null) {
+                const title = document.getElementById('goal-title').value;
+                const category = document.getElementById('goal-category').value;
+                const priority = document.getElementById('goal-priority').value;
+                const notes = document.getElementById('goal-notes').value;
+                const date = customDate || this.getDateStr(new Date());
+
+                const newGoal = {
+                    id: Date.now().toString(),
+                    title,
+                    category,
+                    priority,
+                    notes,
+                    date,
+                    completed: false
+                };
+
+                State.goals.unshift(newGoal);
+                State.save();
+                
+                document.getElementById('add-goal-form').reset();
+                this.renderActiveView();
+                this.showToast('Goal added successfully!');
+            },
+
+            toggleGoal(id) {
+                const goal = State.goals.find(g => g.id === id);
+                if (goal) {
+                    goal.completed = !goal.completed;
+                    State.save();
+                    this.renderActiveView();
+                }
+            },
+
+            deleteGoal(id) {
+                if (confirm('Are you sure you want to delete this goal?')) {
+                    State.goals = State.goals.filter(g => g.id !== id);
+                    State.save();
+                    this.renderActiveView();
+                    this.showToast('Goal deleted');
+                }
+            },
+
+            carryForward(id) {
+                const goal = State.goals.find(g => g.id === id);
+                if (goal) {
+                    const today = this.getDateStr(new Date());
+                    const newGoal = { ...goal, id: Date.now().toString(), date: today, completed: false };
+                    State.goals.unshift(newGoal);
+                    State.save();
+                    this.showToast('Carried forward to today!');
+                    this.renderYesterday();
+                }
+            },
+
+            carryForwardAll() {
+                const yesterday = this.getDateStr(new Date(Date.now() - 86400000));
+                const uncompleted = State.goals.filter(g => g.date === yesterday && !g.completed);
+                const today = this.getDateStr(new Date());
+                
+                uncompleted.forEach((g, i) => {
+                    State.goals.unshift({ ...g, id: (Date.now() + i).toString(), date: today, completed: false });
+                });
+                
+                State.save();
+                this.showToast(`${uncompleted.length} goals carried forward!`);
+                this.renderYesterday();
+            },
+
+            setMetadata(type, value) {
+                const today = this.getDateStr(new Date());
+                if (!State.dailyMetadata[today]) State.dailyMetadata[today] = {};
+                State.dailyMetadata[today][type] = value;
+                State.save();
+                this.renderToday();
+            },
+
+            // Rendering Today
+            renderToday() {
+                const today = this.getDateStr(new Date());
+                const todaysGoals = State.goals.filter(g => g.date === today);
+                const listEl = document.getElementById('today-goals-list');
+                
+                document.getElementById('today-count').textContent = `${todaysGoals.length} Goals`;
+                
+                if (todaysGoals.length === 0) {
+                    listEl.innerHTML = `<div class="text-center py-20 text-gray-400 italic">No goals set for today yet. Start by adding one!</div>`;
+                } else {
+                    listEl.innerHTML = todaysGoals.map(g => this.getGoalHTML(g)).join('');
+                }
+
+                // Completion Rate
+                const completedCount = todaysGoals.filter(g => g.completed).length;
+                const rate = todaysGoals.length > 0 ? Math.round((completedCount / todaysGoals.length) * 100) : 0;
+                document.getElementById('today-completion-rate').textContent = `${rate}%`;
+
+                // Update Mood/Energy buttons UI
+                const meta = State.dailyMetadata[today] || {};
+                document.querySelectorAll('.mood-btn').forEach(b => {
+                    b.classList.toggle('bg-blue-600', b.dataset.mood === meta.mood);
+                    b.classList.toggle('text-white', b.dataset.mood === meta.mood);
+                });
+                document.querySelectorAll('.energy-btn').forEach(b => {
+                    b.classList.toggle('bg-blue-600', b.dataset.energy === meta.energy);
+                    b.classList.toggle('text-white', b.dataset.energy === meta.energy);
+                });
+            },
+
+            getGoalHTML(g, isYesterday = false) {
+                const priorityColors = { High: 'bg-red-100 text-red-700', Medium: 'bg-orange-100 text-orange-700', Low: 'bg-green-100 text-green-700' };
+                return `
+                    <div class="group flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition duration-200">
+                        <div class="flex items-center space-x-4">
+                            <input type="checkbox" ${g.completed ? 'checked' : ''} onclick="app.toggleGoal('${g.id}')" 
+                                class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer">
+                            <div>
+                                <h3 class="font-semibold text-gray-900 ${g.completed ? 'goal-completed' : ''}">${g.title}</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${priorityColors[g.priority]}">${g.priority}</span>
+                                    <span class="text-xs text-gray-400 font-medium">${g.category}</span>
+                                    ${g.notes ? '<i class="fas fa-sticky-note text-gray-300 text-xs" title="' + g.notes + '"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition">
+                            ${isYesterday && !g.completed ? `<button onclick="app.carryForward('${g.id}')" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg" title="Carry Forward"><i class="fas fa-arrow-right"></i></button>` : ''}
+                            <button onclick="app.editGoalModal('${g.id}')" class="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><i class="fas fa-edit"></i></button>
+                            <button onclick="app.deleteGoal('${g.id}')" class="p-2 text-red-400 hover:bg-red-100 rounded-lg"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            },
+
+            renderYesterday() {
+                const yesterday = this.getDateStr(new Date(Date.now() - 86400000));
+                const yesterdayGoals = State.goals.filter(g => g.date === yesterday);
+                const listEl = document.getElementById('yesterday-goals-list');
+                const carryAllBtn = document.getElementById('carry-all-btn');
+
+                if (yesterdayGoals.length === 0) {
+                    listEl.innerHTML = `<div class="text-center py-20 text-gray-400 italic">No goals found for yesterday.</div>`;
+                    carryAllBtn.classList.add('hidden');
+                } else {
+                    listEl.innerHTML = yesterdayGoals.map(g => this.getGoalHTML(g, true)).join('');
+                    const uncompleted = yesterdayGoals.filter(g => !g.completed);
+                    if (uncompleted.length > 0) carryAllBtn.classList.remove('hidden');
+                    else carryAllBtn.classList.add('hidden');
+                }
+            },
+
+            // Stats Logic
+            renderStats() {
+                const totalGoals = State.goals.length;
+                document.getElementById('stats-total-goals').textContent = totalGoals;
+
+                // Today's Rate
+                const today = this.getDateStr(new Date());
+                const todaysGoals = State.goals.filter(g => g.date === today);
+                const completedToday = todaysGoals.filter(g => g.completed).length;
+                const todayRate = todaysGoals.length > 0 ? Math.round((completedToday / todaysGoals.length) * 100) : 0;
+                document.getElementById('stats-today-rate').textContent = `${todayRate}%`;
+
+                // Streak Calculation
+                document.getElementById('stats-streak').textContent = this.calculateStreak();
+
+                // Charts
+                this.renderCharts();
+            },
+
+            calculateStreak() {
+                let streak = 0;
+                let current = new Date();
+                const allDatesWithGoals = [...new Set(State.goals.map(g => g.date))].sort().reverse();
+                
+                // Starting from today or the latest day with goals
+                let checkDate = new Date();
+                
+                while (true) {
+                    const dateStr = this.getDateStr(checkDate);
+                    const dayGoals = State.goals.filter(g => g.date === dateStr);
+                    
+                    if (dayGoals.length > 0) {
+                        const allDone = dayGoals.every(g => g.completed);
+                        if (allDone) {
+                            streak++;
+                        } else {
+                            // Only break streak if it's today or a day before that had goals
+                            break;
+                        }
+                    } else {
+                        // Days with no goals are ignored - but they don't count towards streak
+                        // unless we want them to "pass through". 
+                        // Requirement: "ignored – they do not break the streak, but also do not advance it"
+                        // So we just continue to the previous day without breaking.
+                        // However, if we haven't found a single day with goals yet, streak is 0.
+                        // Let's check if there are ANY goals before this date.
+                        const olderGoals = State.goals.some(g => g.date < dateStr);
+                        if (!olderGoals && streak === 0) break; 
+                        if (!olderGoals) break;
+                    }
+                    
+                    checkDate.setDate(checkDate.getDate() - 1);
+                    if (streak > 365) break; // Safety
+                }
+                return streak;
+            },
+
+            renderCharts() {
+                const ctxWeekly = document.getElementById('weeklyChart').getContext('2d');
+                const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+
+                // Weekly Summary
+                const last7Days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    last7Days.push(this.getDateStr(d));
+                }
+
+                const setCounts = last7Days.map(d => State.goals.filter(g => g.date === d).length);
+                const completedCounts = last7Days.map(d => State.goals.filter(g => g.date === d && g.completed).length);
+
+                if (window.chartWeekly) window.chartWeekly.destroy();
+                window.chartWeekly = new Chart(ctxWeekly, {
+                    type: 'bar',
+                    data: {
+                        labels: last7Days.map(d => d.split('-').slice(1).join('/')),
+                        datasets: [
+                            { label: 'Set', data: setCounts, backgroundColor: '#3b82f6' },
+                            { label: 'Completed', data: completedCounts, backgroundColor: '#10b981' }
+                        ]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                });
+
+                // Category Breakdown
+                const last30DaysLimit = new Date();
+                last30DaysLimit.setDate(last30DaysLimit.getDate() - 30);
+                const recentGoals = State.goals.filter(g => new Date(g.date) >= last30DaysLimit);
+                
+                const categories = ['Health', 'Work', 'Personal', 'Learning', 'Other'];
+                const catData = categories.map(cat => {
+                    const catGoals = recentGoals.filter(g => g.category === cat);
+                    if (catGoals.length === 0) return 0;
+                    return Math.round((catGoals.filter(g => g.completed).length / catGoals.length) * 100);
+                });
+
+                if (window.chartCategory) window.chartCategory.destroy();
+                window.chartCategory = new Chart(ctxCategory, {
+                    type: 'doughnut',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            data: catData,
+                            backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6']
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                });
+            },
+
+            // Database Logic
+            renderDatabase() {
+                const search = document.getElementById('db-search').value.toLowerCase();
+                const cat = document.getElementById('db-filter-category').value;
+                const prio = document.getElementById('db-filter-priority').value;
+                const status = document.getElementById('db-filter-status').value;
+
+                let filtered = State.goals.filter(g => {
+                    const matchesSearch = g.title.toLowerCase().includes(search);
+                    const matchesCat = !cat || g.category === cat;
+                    const matchesPrio = !prio || g.priority === prio;
+                    const matchesStatus = !status || (status === 'completed' ? g.completed : !g.completed);
+                    return matchesSearch && matchesCat && matchesPrio && matchesStatus;
+                });
+
+                const tableBody = document.getElementById('db-goals-table');
+                tableBody.innerHTML = filtered.map(g => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" class="db-item-select" data-id="${g.id}">
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${g.date}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${g.title}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${g.category}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">${g.priority}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${g.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${g.completed ? 'Completed' : 'Pending'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="app.editGoalModal('${g.id}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                            <button onclick="app.deleteGoal('${g.id}')" class="text-red-600 hover:text-red-900">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            filterDatabase() { this.renderDatabase(); },
+
+            toggleSelectAll(el) {
+                document.querySelectorAll('.db-item-select').forEach(cb => cb.checked = el.checked);
+            },
+
+            batchDelete() {
+                const selected = Array.from(document.querySelectorAll('.db-item-select:checked')).map(cb => cb.dataset.id);
+                if (selected.length === 0) return;
+                if (confirm(`Delete ${selected.length} goals?`)) {
+                    State.goals = State.goals.filter(g => !selected.includes(g.id));
+                    State.save();
+                    this.renderDatabase();
+                    this.showToast('Batch delete successful');
+                }
+            },
+
+            // Modals
+            editGoalModal(id) {
+                const goal = State.goals.find(g => g.id === id);
+                if (!goal) return;
+
+                const content = `
+                    <div class="p-6">
+                        <h2 class="text-2xl font-bold mb-4">Edit Goal</h2>
+                        <form id="edit-goal-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Title</label>
+                                <input type="text" id="edit-title" value="${goal.title}" required class="w-full px-3 py-2 border rounded-lg">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Category</label>
+                                    <select id="edit-category" class="w-full px-3 py-2 border rounded-lg">
+                                        ${['Health', 'Work', 'Personal', 'Learning', 'Other'].map(c => `<option value="${c}" ${goal.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Priority</label>
+                                    <select id="edit-priority" class="w-full px-3 py-2 border rounded-lg">
+                                        ${['Low', 'Medium', 'High'].map(p => `<option value="${p}" ${goal.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Date</label>
+                                <input type="date" id="edit-date" value="${goal.date}" class="w-full px-3 py-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Reflection / Notes</label>
+                                <textarea id="edit-notes" rows="3" class="w-full px-3 py-2 border rounded-lg">${goal.notes}</textarea>
+                            </div>
+                            <div class="flex justify-end space-x-2 pt-4">
+                                <button type="button" onclick="ui.closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                ui.openModal(content);
+                document.getElementById('edit-goal-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    goal.title = document.getElementById('edit-title').value;
+                    goal.category = document.getElementById('edit-category').value;
+                    goal.priority = document.getElementById('edit-priority').value;
+                    goal.date = document.getElementById('edit-date').value;
+                    goal.notes = document.getElementById('edit-notes').value;
+                    State.save();
+                    ui.closeModal();
+                    this.renderActiveView();
+                    this.showToast('Goal updated');
+                });
+            },
+
+            openTemplatePicker() {
+                if (State.templates.length === 0) {
+                    this.showToast('No templates available. Create one in the Templates view.');
+                    return;
+                }
+                const content = `
+                    <div class="p-6">
+                        <h2 class="text-xl font-bold mb-4">Select Template</h2>
+                        <div class="space-y-2">
+                            ${State.templates.map(t => `
+                                <button onclick="app.applyTemplate('${t.id}')" class="w-full text-left p-3 hover:bg-blue-50 border rounded-lg transition">
+                                    <div class="font-semibold">${t.title}</div>
+                                    <div class="text-xs text-gray-500">${t.category} | ${t.priority}</div>
+                                </button>
+                            `).join('')}
+                        </div>
+                        <button onclick="ui.closeModal()" class="mt-4 w-full py-2 text-gray-500 hover:bg-gray-50 rounded-lg">Close</button>
+                    </div>
+                `;
+                ui.openModal(content);
+            },
+
+            applyTemplate(id) {
+                const t = State.templates.find(x => x.id === id);
+                if (t) {
+                    document.getElementById('goal-title').value = t.title;
+                    document.getElementById('goal-category').value = t.category;
+                    document.getElementById('goal-priority').value = t.priority;
+                    document.getElementById('goal-notes').value = t.notes;
+                    ui.closeModal();
+                }
+            },
+
+            showToast(msg) {
+                const toast = document.getElementById('toast');
+                document.getElementById('toast-message').textContent = msg;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+        };
+
+        // --- CALENDAR LOGIC ---
+        const calendar = {
+            currentDate: new Date(),
+            
+            render() {
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(this.currentDate);
+                document.getElementById('calendar-month-year').textContent = `${monthName} ${year}`;
+
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                const grid = document.getElementById('calendar-grid');
+                grid.innerHTML = '';
+
+                // Fill blanks
+                for (let i = 0; i < firstDay; i++) {
+                    grid.innerHTML += `<div class="h-24 sm:h-32 border-r border-b border-gray-100 bg-gray-50"></div>`;
+                }
+
+                // Fill days
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayGoals = State.goals.filter(g => g.date === dateStr);
+                    const isToday = dateStr === app.getDateStr(new Date());
+                    
+                    let statusClass = '';
+                    if (dayGoals.length > 0) {
+                        statusClass = dayGoals.every(g => g.completed) ? 'all-completed' : 'not-completed';
+                    }
+
+                    grid.innerHTML += `
+                        <div onclick="calendar.openDayModal('${dateStr}')" class="h-24 sm:h-32 border-r border-b border-gray-100 p-2 cursor-pointer hover:bg-blue-50 transition relative ${statusClass}">
+                            <span class="text-sm font-bold ${isToday ? 'bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-gray-700'}">${day}</span>
+                            ${dayGoals.length > 0 ? `<div class="mt-2 text-[10px] font-medium text-gray-500">${dayGoals.length} Goals</div>` : ''}
+                            ${dayGoals.length > 0 ? `<div class="mt-1 flex gap-0.5">${dayGoals.map(g => `<div class="w-1.5 h-1.5 rounded-full ${g.completed ? 'bg-green-500' : 'bg-red-400'}"></div>`).join('')}</div>` : ''}
+                        </div>
+                    `;
+                }
+            },
+
+            prevMonth() { this.currentDate.setMonth(this.currentDate.getMonth() - 1); this.render(); },
+            nextMonth() { this.currentDate.setMonth(this.currentDate.getMonth() + 1); this.render(); },
+            goToToday() { this.currentDate = new Date(); this.render(); },
+
+            openDayModal(dateStr) {
+                const dayGoals = State.goals.filter(g => g.date === dateStr);
+                const meta = State.dailyMetadata[dateStr] || { mood: 'N/A', energy: 'N/A' };
+                
+                const content = `
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold">${app.formatDate(dateStr)}</h2>
+                            <button onclick="ui.closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg mb-6 flex justify-between">
+                            <div><span class="text-xs uppercase font-bold text-gray-400">Mood</span><div class="font-semibold">${meta.mood}</div></div>
+                            <div><span class="text-xs uppercase font-bold text-gray-400">Energy</span><div class="font-semibold">${meta.energy}</div></div>
+                            <div><span class="text-xs uppercase font-bold text-gray-400">Completion</span><div class="font-semibold">${dayGoals.length > 0 ? Math.round((dayGoals.filter(g => g.completed).length / dayGoals.length) * 100) : 0}%</div></div>
+                        </div>
+
+                        <div class="space-y-3 mb-6">
+                            <h3 class="font-bold text-sm text-gray-500 uppercase">Goals</h3>
+                            ${dayGoals.length === 0 ? '<p class="text-gray-400 italic">No goals this day.</p>' : dayGoals.map(g => `
+                                <div class="flex items-center justify-between p-2 border rounded-lg">
+                                    <span class="${g.completed ? 'line-through text-gray-400' : 'font-medium'}">${g.title}</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100">${g.priority}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="pt-4 border-t">
+                            <button onclick="calendar.addGoalForDay('${dateStr}')" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg">Add Goal for this Day</button>
+                        </div>
+                    </div>
+                `;
+                ui.openModal(content);
+            },
+
+            addGoalForDay(date) {
+                ui.closeModal();
+                router.navigate('today');
+                // Auto-fill and scroll to form? 
+                // Better: show a mini-form in the modal instead. For simplicity, we navigate.
+                setTimeout(() => {
+                    document.getElementById('goal-title').focus();
+                    app.showToast(`Adding goal for ${date}...`);
+                    // We need to override the addGoal date
+                    const originalAdd = app.addGoal;
+                    app.addGoal = () => {
+                        const title = document.getElementById('goal-title').value;
+                        const category = document.getElementById('goal-category').value;
+                        const priority = document.getElementById('goal-priority').value;
+                        const notes = document.getElementById('goal-notes').value;
+                        State.goals.unshift({ id: Date.now().toString(), title, category, priority, notes, date, completed: false });
+                        State.save();
+                        document.getElementById('add-goal-form').reset();
+                        app.addGoal = originalAdd; // Restore
+                        app.renderToday();
+                        app.showToast('Goal added to custom date!');
+                    };
+                }, 100);
+            }
+        };
+
+        // --- TEMPLATES LOGIC ---
+        const templates = {
+            render() {
+                const grid = document.getElementById('templates-grid');
+                if (State.templates.length === 0) {
+                    grid.innerHTML = `<div class="col-span-full text-center py-20 text-gray-400 italic">No templates created.</div>`;
+                } else {
+                    grid.innerHTML = State.templates.map(t => `
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="font-bold text-lg text-gray-900">${t.title}</h3>
+                                <div class="flex space-x-1">
+                                    <button onclick="templates.editTemplateModal('${t.id}')" class="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><i class="fas fa-edit text-sm"></i></button>
+                                    <button onclick="templates.deleteTemplate('${t.id}')" class="p-2 text-red-400 hover:bg-red-50 rounded-lg"><i class="fas fa-trash text-sm"></i></button>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 mb-3">
+                                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold uppercase">${t.priority}</span>
+                                <span class="text-xs text-gray-400">${t.category}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 line-clamp-2">${t.notes || '<span class="italic opacity-50">No notes</span>'}</p>
+                        </div>
+                    `).join('');
+                }
+            },
+
+            openAddModal() {
+                const content = `
+                    <div class="p-6">
+                        <h2 class="text-2xl font-bold mb-4">New Template</h2>
+                        <form id="template-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Title</label>
+                                <input type="text" id="t-title" required class="w-full px-3 py-2 border rounded-lg">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Category</label>
+                                    <select id="t-category" class="w-full px-3 py-2 border rounded-lg">
+                                        <option>Health</option><option>Work</option><option>Personal</option><option>Learning</option><option>Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Priority</label>
+                                    <select id="t-priority" class="w-full px-3 py-2 border rounded-lg">
+                                        <option>Low</option><option selected>Medium</option><option>High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Default Notes</label>
+                                <textarea id="t-notes" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg">Create Template</button>
+                        </form>
+                    </div>
+                `;
+                ui.openModal(content);
+                document.getElementById('template-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    State.templates.push({
+                        id: 't' + Date.now(),
+                        title: document.getElementById('t-title').value,
+                        category: document.getElementById('t-category').value,
+                        priority: document.getElementById('t-priority').value,
+                        notes: document.getElementById('t-notes').value
+                    });
+                    State.save();
+                    ui.closeModal();
+                    this.render();
+                    app.showToast('Template created');
+                });
+            },
+
+            deleteTemplate(id) {
+                if (confirm('Delete this template?')) {
+                    State.templates = State.templates.filter(t => t.id !== id);
+                    State.save();
+                    this.render();
+                }
+            }
+        };
+
+        // --- UI & ROUTER ---
+        const ui = {
+            openModal(html) {
+                const backdrop = document.getElementById('modal-backdrop');
+                const content = document.getElementById('modal-content');
+                content.innerHTML = html;
+                backdrop.classList.remove('hidden');
+                backdrop.classList.add('flex');
+            },
+            closeModal() {
+                const backdrop = document.getElementById('modal-backdrop');
+                backdrop.classList.add('hidden');
+                backdrop.classList.remove('flex');
+            }
+        };
+
+        const router = {
+            currentView: 'today',
+            navigate(view) {
+                this.currentView = view;
+                location.hash = view;
+                app.renderActiveView();
+            },
+            init() {
+                const h = location.hash.replace('#', '');
+                if (['today', 'yesterday', 'calendar', 'stats', 'database', 'templates'].includes(h)) {
+                    this.currentView = h;
+                }
+            }
+        };
+
+        // Closing modal on backdrop click
+        document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-backdrop') ui.closeModal();
+        });
+
+        // Bootstrap
+        router.init();
+        app.init();
+    </script>
+</body>
+</html>

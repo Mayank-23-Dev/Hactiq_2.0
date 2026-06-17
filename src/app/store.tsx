@@ -1,0 +1,578 @@
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { useTheme } from "next-themes";
+
+export type Priority = string;
+
+export interface Goal {
+  id: string;
+  title: string;
+  category: string;
+  priority: string;
+  completed: boolean;
+  date: string; // YYYY-MM-DD
+  notes: string;
+  streakId?: string;
+  status: string;
+}
+
+export interface StreakGoal {
+  id: string;
+  title: string;
+  category: string;
+  priority: string;
+  notes: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  frequency: 'daily' | 'weekdays' | 'weekends' | 'custom';
+  customDays?: number[]; // 0=Sun..6=Sat
+  active: boolean;
+  createdAt: string;
+}
+
+export interface GoalTemplate {
+  id: string;
+  title: string;
+  category: string;
+  priority: string;
+  notes: string;
+}
+
+export interface DayMetadata {
+  mood?: string;
+  energy?: string;
+}
+
+export interface CustomConfig {
+  categories: { id: string; name: string; order: number }[];
+  priorities: { id: string; name: string; color: string; order: number }[];
+  moods: { id: string; name: string; order: number }[];
+  energies: { id: string; name: string; order: number }[];
+  boardStages: { id: string; name: string; order: number }[];
+  personaTemplates: {
+    id: string;
+    name: string;
+    description?: string;
+    defaultCategoryId?: string;
+    defaultPriorityId?: string;
+    sampleGoalTitle?: string;
+  }[];
+}
+
+const initialCustomConfig: CustomConfig = {
+  categories: [
+    { id: "health", name: "Health", order: 1 },
+    { id: "work", name: "Work", order: 2 },
+    { id: "personal", name: "Personal", order: 3 },
+    { id: "learning", name: "Learning", order: 4 },
+    { id: "other", name: "Other", order: 5 }
+  ],
+  priorities: [
+    { id: "high", name: "High", color: "red", order: 1 },
+    { id: "medium", name: "Medium", color: "orange", order: 2 },
+    { id: "low", name: "Low", color: "green", order: 3 }
+  ],
+  moods: [
+    { id: "Good", name: "Good", order: 1 },
+    { id: "Okay", name: "Okay", order: 2 },
+    { id: "Bad", name: "Bad", order: 3 }
+  ],
+  energies: [
+    { id: "High", name: "High", order: 1 },
+    { id: "Medium", name: "Medium", order: 2 },
+    { id: "Low", name: "Low", order: 3 }
+  ],
+  boardStages: [
+    { id: "todo", name: "To Do", order: 1 },
+    { id: "in-progress", name: "In Progress", order: 2 },
+    { id: "done", name: "Done", order: 3 }
+  ],
+  personaTemplates: [
+    { id: "pt1", name: "Student", description: "Focus on studies", defaultCategoryId: "learning", defaultPriorityId: "high", sampleGoalTitle: "Study for 2 hours" },
+    { id: "pt2", name: "Freelancer", description: "Client work", defaultCategoryId: "work", defaultPriorityId: "high", sampleGoalTitle: "Complete client deliverable" },
+    { id: "pt3", name: "Manager", description: "Team leadership", defaultCategoryId: "work", defaultPriorityId: "medium", sampleGoalTitle: "1-on-1 team sync" },
+    { id: "pt4", name: "Fitness Enthusiast", description: "Workout and diet", defaultCategoryId: "health", defaultPriorityId: "high", sampleGoalTitle: "Go to the gym" },
+    { id: "pt5", name: "Developer", description: "Coding and projects", defaultCategoryId: "work", defaultPriorityId: "medium", sampleGoalTitle: "Write unit tests" },
+    { id: "pt6", name: "Writer", description: "Writing goals", defaultCategoryId: "personal", defaultPriorityId: "medium", sampleGoalTitle: "Write 500 words" },
+    { id: "pt7", name: "Entrepreneur", description: "Business growth", defaultCategoryId: "work", defaultPriorityId: "high", sampleGoalTitle: "Review business metrics" },
+    { id: "pt8", name: "Parent", description: "Family time", defaultCategoryId: "personal", defaultPriorityId: "high", sampleGoalTitle: "Quality time with kids" },
+    { id: "pt9", name: "Teacher", description: "Class prep", defaultCategoryId: "work", defaultPriorityId: "medium", sampleGoalTitle: "Prepare lesson plan" },
+    { id: "pt10", name: "Artist", description: "Creative work", defaultCategoryId: "personal", defaultPriorityId: "medium", sampleGoalTitle: "Spend 1 hour drawing" },
+  ]
+};
+
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: Priority;
+  dueDate: string;
+  assignees: string[];
+  labels: string[];
+  subtasks: Subtask[];
+  comments: number;
+  attachments: number;
+  columnId: string;
+  boardId: string;
+}
+
+export interface Column {
+  id: string;
+  title: string;
+  boardId: string;
+}
+
+export interface Board {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  lastModified: string;
+}
+
+export interface ActivityItem {
+  id: string;
+  text: string;
+  time: string;
+  boardName: string;
+}
+
+const AVATARS = ["AC", "BK", "CL", "DM", "EW"];
+const AVATAR_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"];
+
+const initialBoards: Board[] = [
+  { id: "b1", name: "Product Roadmap", description: "Q3 feature planning and delivery", color: "#6366f1", lastModified: "2026-06-12" },
+  { id: "b2", name: "Marketing Campaign", description: "Summer launch campaign tasks", color: "#ec4899", lastModified: "2026-06-11" },
+  { id: "b3", name: "Bug Tracker", description: "Known issues and fixes", color: "#f59e0b", lastModified: "2026-06-10" },
+  { id: "b4", name: "Design System", description: "Component library updates", color: "#10b981", lastModified: "2026-06-09" },
+];
+
+const initialColumns: Column[] = [
+  { id: "c1", title: "To Do", boardId: "b1" },
+  { id: "c2", title: "In Progress", boardId: "b1" },
+  { id: "c3", title: "Done", boardId: "b1" },
+  { id: "c4", title: "To Do", boardId: "b2" },
+  { id: "c5", title: "In Progress", boardId: "b2" },
+  { id: "c6", title: "Done", boardId: "b2" },
+  { id: "c7", title: "To Do", boardId: "b3" },
+  { id: "c8", title: "In Progress", boardId: "b3" },
+  { id: "c9", title: "Done", boardId: "b3" },
+  { id: "c10", title: "To Do", boardId: "b4" },
+  { id: "c11", title: "In Progress", boardId: "b4" },
+  { id: "c12", title: "Done", boardId: "b4" },
+];
+
+const initialTasks: Task[] = [
+  {
+    id: "t1", title: "Design new onboarding flow", description: "Create wireframes and high-fidelity mockups for the new user onboarding experience.",
+    priority: "high", dueDate: "2026-06-20", assignees: ["AC", "BK"], labels: ["Design", "UX"],
+    subtasks: [{ id: "s1", title: "Wireframes", done: true }, { id: "s2", title: "Mockups", done: false }, { id: "s3", title: "Prototype", done: false }],
+    comments: 4, attachments: 2, columnId: "c1", boardId: "b1",
+  },
+  {
+    id: "t2", title: "Implement authentication", description: "Add OAuth2 login with Google and GitHub providers.",
+    priority: "high", dueDate: "2026-06-18", assignees: ["CL"], labels: ["Backend", "Security"],
+    subtasks: [{ id: "s4", title: "Google OAuth", done: true }, { id: "s5", title: "GitHub OAuth", done: true }],
+    comments: 2, attachments: 0, columnId: "c2", boardId: "b1",
+  },
+  {
+    id: "t3", title: "Write API documentation", description: "Document all REST endpoints with examples and response schemas.",
+    priority: "medium", dueDate: "2026-06-25", assignees: ["DM", "EW"], labels: ["Docs"],
+    subtasks: [{ id: "s6", title: "Auth endpoints", done: false }, { id: "s7", title: "User endpoints", done: false }],
+    comments: 1, attachments: 1, columnId: "c1", boardId: "b1",
+  },
+  {
+    id: "t4", title: "Set up CI/CD pipeline", description: "Configure GitHub Actions for automated testing and deployment.",
+    priority: "medium", dueDate: "2026-06-15", assignees: ["AC"], labels: ["DevOps"],
+    subtasks: [{ id: "s8", title: "Test runner", done: true }, { id: "s9", title: "Deploy job", done: true }],
+    comments: 0, attachments: 0, columnId: "c3", boardId: "b1",
+  },
+  {
+    id: "t5", title: "Homepage redesign", description: "Revamp the marketing homepage for summer campaign.",
+    priority: "high", dueDate: "2026-06-22", assignees: ["BK", "CL"], labels: ["Marketing", "Design"],
+    subtasks: [{ id: "s10", title: "Hero section", done: true }, { id: "s11", title: "Features grid", done: false }],
+    comments: 6, attachments: 3, columnId: "c4", boardId: "b2",
+  },
+  {
+    id: "t6", title: "Social media assets", description: "Create banners and posts for Instagram, Twitter, LinkedIn.",
+    priority: "low", dueDate: "2026-06-17", assignees: ["DM"], labels: ["Design"],
+    subtasks: [], comments: 2, attachments: 5, columnId: "c5", boardId: "b2",
+  },
+  {
+    id: "t7", title: "Fix login redirect bug", description: "Users are redirected to 404 after password reset on mobile.",
+    priority: "high", dueDate: "2026-06-14", assignees: ["EW"], labels: ["Bug", "Mobile"],
+    subtasks: [{ id: "s12", title: "Reproduce", done: true }, { id: "s13", title: "Fix", done: false }],
+    comments: 3, attachments: 0, columnId: "c7", boardId: "b3",
+  },
+  {
+    id: "t8", title: "Memory leak in dashboard", description: "Component unmount not cleaning up event listeners.",
+    priority: "medium", dueDate: "2026-06-16", assignees: ["AC", "CL"], labels: ["Bug", "Frontend"],
+    subtasks: [{ id: "s14", title: "Profile memory", done: true }],
+    comments: 1, attachments: 0, columnId: "c8", boardId: "b3",
+  },
+];
+
+const initialActivity: ActivityItem[] = [
+  { id: "a1", text: 'Moved "Design new onboarding flow" to In Progress', time: "2 min ago", boardName: "Product Roadmap" },
+  { id: "a2", text: 'Created task "Fix login redirect bug"', time: "1 hr ago", boardName: "Bug Tracker" },
+  { id: "a3", text: 'Completed "Set up CI/CD pipeline"', time: "3 hrs ago", boardName: "Product Roadmap" },
+  { id: "a4", text: 'Added comment on "Homepage redesign"', time: "5 hrs ago", boardName: "Marketing Campaign" },
+  { id: "a5", text: 'Assigned "Memory leak in dashboard" to AC', time: "Yesterday", boardName: "Bug Tracker" },
+];
+
+const todayStr = new Date().toISOString().split("T")[0];
+const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+const initialGoals: Goal[] = [
+  { id: "g1", title: "Morning Exercise", category: "Health", priority: "high", completed: true, date: todayStr, notes: "Felt great!", status: "done" },
+  { id: "g2", title: "Learn 5 new JS patterns", category: "Learning", priority: "medium", completed: false, date: todayStr, notes: "", status: "todo" },
+  { id: "g3", title: "Complete Project Report", category: "Work", priority: "high", completed: true, date: yesterdayStr, notes: "Sent to boss.", status: "done" },
+  { id: "g4", title: "Read 20 pages", category: "Personal", priority: "low", completed: false, date: yesterdayStr, notes: "", status: "todo" }
+];
+
+const initialTemplates: GoalTemplate[] = [
+  { id: "gt1", title: "Meditation", category: "Health", priority: "medium", notes: "15 minutes mindfulness" },
+  { id: "gt2", title: "Inbox Zero", category: "Work", priority: "high", notes: "Clear all emails" }
+];
+
+const initialMetadata: Record<string, DayMetadata> = {
+  [todayStr]: { mood: "Good", energy: "High" }
+};
+
+export interface AppState {
+  boards: Board[];
+  columns: Column[];
+  tasks: Task[];
+  activity: ActivityItem[];
+  theme: "light" | "dark" | "system";
+  avatarColors: Record<string, string>;
+  goals: Goal[];
+  streakGoals: StreakGoal[];
+  templates: GoalTemplate[];
+  dailyMetadata: Record<string, DayMetadata>;
+  groqApiKey: string;
+  aiFeaturesConfig: Record<string, boolean>;
+  customConfig: CustomConfig;
+}
+
+export interface AppContextValue extends AppState {
+  createBoard: (name: string, description: string, color: string) => void;
+  deleteBoard: (id: string) => void;
+  createTask: (boardId: string, columnId: string, title: string) => Task;
+  updateTask: (id: string, updates: Partial<Task>) => void;
+  deleteTask: (id: string) => void;
+  moveTask: (taskId: string, toColumnId: string) => void;
+  updateColumn: (id: string, title: string) => void;
+  deleteColumn: (id: string) => void;
+  setTheme: (theme: "light" | "dark" | "system") => void;
+  getAvatarColor: (initials: string) => string;
+  // Goal Tracker Methods
+  addGoal: (goal: Omit<Goal, "id">) => void;
+  updateGoal: (id: string, updates: Partial<Goal>) => void;
+  deleteGoal: (id: string) => void;
+  toggleGoal: (id: string) => void;
+  // Streak Goals
+  addStreakGoal: (streakGoal: Omit<StreakGoal, "id" | "createdAt">) => void;
+  updateStreakGoal: (id: string, updates: Partial<StreakGoal>) => void;
+  deleteStreakGoal: (id: string) => void;
+  regenerateAllStreakGoals: () => void;
+  // Templates & Metadata
+  addTemplate: (template: Omit<GoalTemplate, "id">) => void;
+  deleteTemplate: (id: string) => void;
+  setDayMetadata: (date: string, metadata: Partial<DayMetadata>) => void;
+  // AI Config
+  setGroqApiKey: (key: string) => void;
+  toggleAiFeature: (featureKey: string, enabled: boolean) => void;
+  updateCustomConfig: (updates: Partial<CustomConfig>) => void;
+}
+
+const AppContext = createContext<AppContextValue | null>(null);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const safeParse = <T,>(key: string, fallback: T): T => {
+    try {
+      const item = localStorage.getItem(key);
+      if (!item || item === "null" || item === "undefined") return fallback;
+      const parsed = JSON.parse(item);
+      if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback;
+      return parsed;
+    } catch (e) {
+      return fallback;
+    }
+  };
+
+  const [boards, setBoards] = useState<Board[]>(() => safeParse("gt_boards", initialBoards));
+  const [columns, setColumns] = useState<Column[]>(() => safeParse("gt_columns", initialColumns));
+  const [tasks, setTasks] = useState<Task[]>(() => safeParse("gt_tasks", initialTasks));
+  const [activity, setActivity] = useState<ActivityItem[]>(() => safeParse("gt_activity", initialActivity));
+  const [goals, setGoals] = useState<Goal[]>(() => safeParse("gt_goals", initialGoals));
+  const [streakGoals, setStreakGoals] = useState<StreakGoal[]>(() => safeParse("gt_streak_goals", []));
+  const [templates, setTemplates] = useState<GoalTemplate[]>(() => safeParse("gt_templates", initialTemplates));
+  const [dailyMetadata, setDailyMetadata] = useState<Record<string, DayMetadata>>(() => safeParse("gt_metadata", initialMetadata));
+  const [groqApiKey, setGroqApiKey] = useState<string>(() => safeParse("gt_groq_api_key", ""));
+  const [customConfig, setCustomConfig] = useState<CustomConfig>(() => safeParse("gt_custom_config", initialCustomConfig));
+  const [aiFeaturesConfig, setAiFeaturesConfig] = useState<Record<string, boolean>>(() => safeParse("gt_ai_features", {
+    naturalLanguageEntry: true,
+    autoCategorization: true,
+    dailyBriefing: true,
+    smartRescheduling: true,
+    autoReflection: true,
+    aiInsights: true,
+    smartTemplates: true,
+    voiceEntry: true,
+    goalDecomposition: true,
+    predictiveAlert: true
+  }));
+
+  useEffect(() => {
+    localStorage.setItem("gt_boards", JSON.stringify(boards));
+    localStorage.setItem("gt_columns", JSON.stringify(columns));
+    localStorage.setItem("gt_tasks", JSON.stringify(tasks));
+    localStorage.setItem("gt_activity", JSON.stringify(activity));
+    localStorage.setItem("gt_goals", JSON.stringify(goals));
+    localStorage.setItem("gt_streak_goals", JSON.stringify(streakGoals));
+    localStorage.setItem("gt_templates", JSON.stringify(templates));
+    localStorage.setItem("gt_metadata", JSON.stringify(dailyMetadata));
+    localStorage.setItem("gt_groq_api_key", JSON.stringify(groqApiKey));
+    localStorage.setItem("gt_ai_features", JSON.stringify(aiFeaturesConfig));
+    localStorage.setItem("gt_custom_config", JSON.stringify(customConfig));
+  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig]);
+  
+  const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
+
+  const theme = (nextTheme || "system") as "light" | "dark" | "system";
+  const setTheme = useCallback((t: "light" | "dark" | "system") => {
+    setNextTheme(t);
+  }, [setNextTheme]);
+
+  const toggleAiFeature = useCallback((featureKey: string, enabled: boolean) => {
+    setAiFeaturesConfig(prev => ({ ...prev, [featureKey]: enabled }));
+  }, []);
+
+  const updateCustomConfig = useCallback((updates: Partial<CustomConfig>) => {
+    setCustomConfig(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  const avatarColorMap: Record<string, string> = {};
+  AVATARS.forEach((a, i) => { avatarColorMap[a] = AVATAR_COLORS[i]; });
+
+  const getAvatarColor = (initials: string) => avatarColorMap[initials] ?? "#6366f1";
+
+  const addActivity = (text: string, boardName: string) => {
+    setActivity(prev => [{
+      id: `a${Date.now()}`, text, time: "just now", boardName
+    }, ...prev.slice(0, 9)]);
+  };
+
+  const createBoard = useCallback((name: string, description: string, color: string) => {
+    const id = `b${Date.now()}`;
+    const newBoard: Board = { id, name, description, color, lastModified: new Date().toISOString().split("T")[0] };
+    setBoards(prev => [...prev, newBoard]);
+    setColumns(prev => [
+      ...prev,
+      { id: `c${Date.now()}1`, title: "To Do", boardId: id },
+      { id: `c${Date.now()}2`, title: "In Progress", boardId: id },
+      { id: `c${Date.now()}3`, title: "Done", boardId: id },
+    ]);
+    addActivity(`Created board "${name}"`, name);
+  }, []);
+
+  const deleteBoard = useCallback((id: string) => {
+    setBoards(prev => prev.filter(b => b.id !== id));
+    setColumns(prev => prev.filter(c => c.boardId !== id));
+    setTasks(prev => prev.filter(t => t.boardId !== id));
+  }, []);
+
+  const createTask = useCallback((boardId: string, columnId: string, title: string): Task => {
+    const board = boards.find(b => b.id === boardId);
+    const newTask: Task = {
+      id: `t${Date.now()}`, title, description: "", priority: "medium",
+      dueDate: "", assignees: [], labels: [], subtasks: [], comments: 0, attachments: 0,
+      columnId, boardId,
+    };
+    setTasks(prev => [...prev, newTask]);
+    addActivity(`Created task "${title}"`, board?.name ?? "");
+    return newTask;
+  }, [boards]);
+
+  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
+
+  const deleteTask = useCallback((id: string) => {
+    setTasks(prev => {
+      const task = prev.find(t => t.id === id);
+      const board = boards.find(b => b.id === task?.boardId);
+      if (task) addActivity(`Deleted task "${task.title}"`, board?.name ?? "");
+      return prev.filter(t => t.id !== id);
+    });
+  }, [boards]);
+
+  const moveTask = useCallback((taskId: string, toColumnId: string) => {
+    setTasks(prev => {
+      const task = prev.find(t => t.id === taskId);
+      const toCol = columns.find(c => c.id === toColumnId);
+      const board = boards.find(b => b.id === task?.boardId);
+      if (task && toCol) addActivity(`Moved "${task.title}" to ${toCol.title}`, board?.name ?? "");
+      return prev.map(t => t.id === taskId ? { ...t, columnId: toColumnId } : t);
+    });
+  }, [columns, boards]);
+
+  const updateColumn = useCallback((id: string, title: string) => {
+    setColumns(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+  }, []);
+
+  const deleteColumn = useCallback((id: string) => {
+    setColumns(prev => prev.filter(c => c.id !== id));
+    setTasks(prev => prev.filter(t => t.columnId !== id));
+  }, []);
+
+  // Goal Tracker Methods
+  const addGoal = useCallback((goal: Omit<Goal, "id">) => {
+    setGoals(prev => [{ id: `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`, ...goal }, ...prev]);
+  }, []);
+
+  const updateGoal = useCallback((id: string, updates: Partial<Goal>) => {
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+  }, []);
+
+  const deleteGoal = useCallback((id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+  }, []);
+
+  const toggleGoal = useCallback((id: string) => {
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, completed: !g.completed, status: !g.completed ? "done" : "todo" } : g));
+  }, []);
+
+  const addTemplate = useCallback((template: Omit<GoalTemplate, "id">) => {
+    setTemplates(prev => [{ id: `gt${Date.now()}`, ...template }, ...prev]);
+  }, []);
+
+  const deleteTemplate = useCallback((id: string) => {
+    setTemplates(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const setDayMetadata = useCallback((date: string, metadata: Partial<DayMetadata>) => {
+    setDailyMetadata(prev => ({
+      ...prev,
+      [date]: { ...prev[date], ...metadata }
+    }));
+  }, []);
+
+  // --- Streak Goals Methods ---
+  
+  const generateInstancesForStreak = useCallback((streak: StreakGoal, currentGoals: Goal[]) => {
+    if (!streak.active) return [];
+
+    const newGoals: Goal[] = [];
+    const start = new Date(streak.startDate + "T00:00:00");
+    const end = new Date(streak.endDate + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Don't generate too far into the future to save space. Generate up to End Date or 30 days out, whichever is closer.
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + 30);
+    const actualEnd = end < maxDate ? end : maxDate;
+
+    for (let d = new Date(start); d <= actualEnd; d.setDate(d.getDate() + 1)) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+
+      let shouldGenerate = false;
+      if (streak.frequency === 'daily') shouldGenerate = true;
+      else if (streak.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldGenerate = true;
+      else if (streak.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldGenerate = true;
+      else if (streak.frequency === 'custom' && streak.customDays?.includes(dayOfWeek)) shouldGenerate = true;
+
+      if (shouldGenerate) {
+        // Check if it already exists for this date and streakId
+        const exists = currentGoals.some(g => g.streakId === streak.id && g.date === dateStr);
+        if (!exists) {
+          newGoals.push({
+            id: `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`,
+            title: streak.title,
+            category: streak.category,
+            priority: streak.priority,
+            notes: streak.notes,
+            completed: false,
+            date: dateStr,
+            streakId: streak.id,
+            status: "todo"
+          });
+        }
+      }
+    }
+    return newGoals;
+  }, []);
+
+  const addStreakGoal = useCallback((streakGoal: Omit<StreakGoal, "id" | "createdAt">) => {
+    const newStreak: StreakGoal = {
+      ...streakGoal,
+      id: `sg${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    setStreakGoals(prev => [...prev, newStreak]);
+    
+    // Immediately generate goals for this streak
+    setGoals(prevGoals => {
+      const generated = generateInstancesForStreak(newStreak, prevGoals);
+      return [...generated, ...prevGoals];
+    });
+  }, [generateInstancesForStreak]);
+
+  const updateStreakGoal = useCallback((id: string, updates: Partial<StreakGoal>) => {
+    setStreakGoals(prev => prev.map(sg => sg.id === id ? { ...sg, ...updates } : sg));
+  }, []);
+
+  const deleteStreakGoal = useCallback((id: string) => {
+    setStreakGoals(prev => prev.filter(sg => sg.id !== id));
+    // Optionally delete all related goals that are uncompleted in the future
+    const todayStr = new Date().toISOString().split("T")[0];
+    setGoals(prev => prev.filter(g => !(g.streakId === id && g.date >= todayStr && !g.completed)));
+  }, []);
+
+  const regenerateAllStreakGoals = useCallback(() => {
+    setGoals(prevGoals => {
+      let newlyGenerated: Goal[] = [];
+      streakGoals.forEach(sg => {
+        newlyGenerated = [...newlyGenerated, ...generateInstancesForStreak(sg, [...prevGoals, ...newlyGenerated])];
+      });
+      if (newlyGenerated.length === 0) return prevGoals;
+      return [...newlyGenerated, ...prevGoals];
+    });
+  }, [streakGoals, generateInstancesForStreak]);
+
+  // Run regeneration once on load
+  useEffect(() => {
+    regenerateAllStreakGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once
+
+  return (
+    <AppContext.Provider value={{
+      boards, columns, tasks, activity, theme,
+      createBoard, deleteBoard, createTask, updateTask, deleteTask, moveTask,
+      updateColumn, deleteColumn, setTheme, getAvatarColor, avatarColors: avatarColorMap,
+      goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig,
+      addGoal, updateGoal, deleteGoal, toggleGoal, addTemplate, deleteTemplate, setDayMetadata,
+      addStreakGoal, updateStreakGoal, deleteStreakGoal, regenerateAllStreakGoals,
+      setGroqApiKey, toggleAiFeature, updateCustomConfig,
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useApp() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
+}
