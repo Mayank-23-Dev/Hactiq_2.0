@@ -36,9 +36,7 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
       >
         {/* Logo */}
         <div className="flex items-center gap-2 px-3 py-4 border-b border-border">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary shrink-0">
-            <Trello size={16} className="text-primary-foreground" />
-          </div>
+          <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
           {sidebarOpen && (
             <span className="font-semibold text-sidebar-foreground truncate">Hactiq</span>
           )}
