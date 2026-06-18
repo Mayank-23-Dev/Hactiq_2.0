@@ -118,7 +118,7 @@ export function ProfileTab() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Alex Chen"
-              className="bg-background border-input text-foreground"
+              className="bg-background border-input text-foreground h-10 px-3 py-2"
             />
           </div>
 
@@ -130,7 +130,7 @@ export function ProfileTab() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. alex@company.co"
-              className="bg-background border-input text-foreground"
+              className="bg-background border-input text-foreground h-10 px-3 py-2"
             />
           </div>
 
@@ -142,7 +142,7 @@ export function ProfileTab() {
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell your team about yourself..."
               rows={4}
-              className="resize-none bg-background border-input text-foreground"
+              className="resize-none bg-background border-input text-foreground px-3 py-2"
             />
           </div>
         </div>

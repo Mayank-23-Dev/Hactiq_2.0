@@ -9,7 +9,7 @@ import { EditGoalDialog } from "./EditGoalDialog";
 import { PriorityBadge } from "./Shared";
 
 export function YesterdayView() {
-  const { goals, toggleGoal, deleteGoal, addGoal, groqApiKey, aiFeaturesConfig, dailyMetadata, customConfig } = useApp();
+  const { goals, toggleGoal, deleteGoal, carryForwardGoal, groqApiKey, aiFeaturesConfig, dailyMetadata, customConfig } = useApp();
   const [loadingSuggestion, setLoadingSuggestion] = useState<string | null>(null);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   
@@ -18,26 +18,13 @@ export function YesterdayView() {
   const uncompleted = yesterdayGoals.filter(g => !g.completed);
 
   const carryForward = (id: string) => {
-    const goal = goals.find(g => g.id === id);
-    if (goal) {
-      addGoal({
-        ...goal,
-        date: format(new Date(), "yyyy-MM-dd"),
-        completed: false,
-        status: "todo"
-      });
-      toast.success("Carried forward to today!");
-    }
+    carryForwardGoal(id);
+    toast.success("Carried forward to today!");
   };
 
   const carryForwardAll = () => {
     uncompleted.forEach(g => {
-      addGoal({
-        ...g,
-        date: format(new Date(), "yyyy-MM-dd"),
-        completed: false,
-        status: "todo"
-      });
+      carryForwardGoal(g.id);
     });
     toast.success(`${uncompleted.length} goals carried forward!`);
   };

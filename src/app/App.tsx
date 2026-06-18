@@ -14,6 +14,7 @@ import { TemplatesView } from "./components/goals/TemplatesView";
 import { StreakGoals } from "./components/goals/StreakGoals";
 import { GoalBoard } from "./components/goals/GoalBoard";
 import { BackgroundParticles } from "../components/layout/BackgroundParticles";
+import ActivityPage from "../pages/ActivityPage";
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/board/:id" element={<BoardPage />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/activities" element={<ActivityPage />} />
             
             {/* Goal Tracker Routes */}
             <Route path="/goals" element={<GoalTracker />} />

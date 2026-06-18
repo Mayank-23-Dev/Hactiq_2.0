@@ -1,6 +1,8 @@
+// src/app/store.tsx
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useAuth } from "../contexts/AuthContext";
+import { format, subDays, eachDayOfInterval } from "date-fns";
 
 export type Priority = string;
 
@@ -65,6 +67,27 @@ export interface CustomConfig {
     defaultPriorityId?: string;
     sampleGoalTitle?: string;
   }[];
+}
+
+export type ActivityType =
+  | 'goal_created'
+  | 'goal_completed'
+  | 'goal_deleted'
+  | 'goal_moved'
+  | 'board_created'
+  | 'goal_edited'
+  | 'carried_forward'
+  | 'goal_archived';
+
+export interface Activity {
+  id: string;
+  userId: string;
+  type: ActivityType;
+  message: string;
+  boardName?: string;
+  goalTitle?: string;
+  timestamp: string; // ISO String to persist
+  read: boolean;
 }
 
 const initialCustomConfig: CustomConfig = {
@@ -253,14 +276,6 @@ const initialMetadata: Record<string, DayMetadata> = {
   [todayStr]: { mood: "Good", energy: "High" }
 };
 
-const initialProfile: UserProfile = {
-  name: "Alex Chen",
-  email: "alex@company.co",
-  avatar: "AC",
-  bio: "Product Designer & Developer",
-  avatarUrl: ""
-};
-
 export interface AppState {
   boards: Board[];
   columns: Column[];
@@ -276,6 +291,7 @@ export interface AppState {
   aiFeaturesConfig: Record<string, boolean>;
   customConfig: CustomConfig;
   userProfile: UserProfile;
+  activities: Activity[];
 }
 
 export interface AppContextValue extends AppState {
@@ -294,6 +310,7 @@ export interface AppContextValue extends AppState {
   updateGoal: (id: string, updates: Partial<Goal>) => void;
   deleteGoal: (id: string) => void;
   toggleGoal: (id: string) => void;
+  carryForwardGoal: (id: string) => void;
   // Streak Goals
   addStreakGoal: (streakGoal: Omit<StreakGoal, "id" | "createdAt">) => void;
   updateStreakGoal: (id: string, updates: Partial<StreakGoal>) => void;
@@ -310,6 +327,9 @@ export interface AppContextValue extends AppState {
   updateCustomConfig: (updates: Partial<CustomConfig>) => void;
   // User Profile
   updateUserProfile: (profile: Partial<UserProfile>) => void;
+  // Activity Logging System Actions
+  addActivity: (activity: Omit<Activity, 'id' | 'timestamp' | 'userId' | 'read'>) => void;
+  markAllActivitiesAsRead: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -338,6 +358,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [groqApiKey, setGroqApiKey] = useState<string>(() => safeParse("gt_groq_api_key", ""));
   const [customConfig, setCustomConfig] = useState<CustomConfig>(() => safeParse("gt_custom_config", initialCustomConfig));
   const { userProfile, updateUserProfile } = useAuth();
+  const [activities, setActivities] = useState<Activity[]>(() => safeParse("gt_activities", []));
+
   const [aiFeaturesConfig, setAiFeaturesConfig] = useState<Record<string, boolean>>(() => safeParse("gt_ai_features", {
     naturalLanguageEntry: true,
     autoCategorization: true,
@@ -363,7 +385,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("gt_groq_api_key", JSON.stringify(groqApiKey));
     localStorage.setItem("gt_ai_features", JSON.stringify(aiFeaturesConfig));
     localStorage.setItem("gt_custom_config", JSON.stringify(customConfig));
-  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig]);
+    localStorage.setItem("gt_activities", JSON.stringify(activities));
+  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig, activities]);
   
   const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
 
@@ -385,11 +408,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getAvatarColor = (initials: string) => avatarColorMap[initials] ?? "#6366f1";
 
-  const addActivity = (text: string, boardName: string) => {
+  // New Activity Logger dispatch action
+  const addActivity = useCallback((act: Omit<Activity, 'id' | 'timestamp' | 'userId' | 'read'>) => {
+    const newActivity: Activity = {
+      id: `act_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: userProfile.email || "default_user",
+      timestamp: new Date().toISOString(),
+      read: false,
+      ...act
+    };
+    setActivities(prev => [newActivity, ...prev].slice(0, 100));
+
+    // Keep the old activity text feed updated
     setActivity(prev => [{
-      id: `a${Date.now()}`, text, time: "just now", boardName
+      id: `a${Date.now()}`, text: act.message, time: "just now", boardName: act.boardName || ""
     }, ...prev.slice(0, 9)]);
-  };
+  }, [userProfile.email]);
+
+  const markAllActivitiesAsRead = useCallback(() => {
+    setActivities(prev => prev.map(a => a.read ? a : { ...a, read: true }));
+  }, []);
 
   const createBoard = useCallback((name: string, description: string, color: string) => {
     const id = `b${Date.now()}`;
@@ -401,8 +439,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       { id: `c${Date.now()}2`, title: "In Progress", boardId: id },
       { id: `c${Date.now()}3`, title: "Done", boardId: id },
     ]);
-    addActivity(`Created board "${name}"`, name);
-  }, []);
+    addActivity({
+      type: 'board_created',
+      message: `Created board '${name}'`,
+      boardName: name
+    });
+  }, [addActivity]);
 
   const deleteBoard = useCallback((id: string) => {
     setBoards(prev => prev.filter(b => b.id !== id));
@@ -418,32 +460,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       columnId, boardId,
     };
     setTasks(prev => [...prev, newTask]);
-    addActivity(`Created task "${title}"`, board?.name ?? "");
+    addActivity({
+      type: 'goal_created',
+      message: `Created task '${title}'`,
+      boardName: board?.name ?? "",
+      goalTitle: title
+    });
     return newTask;
-  }, [boards]);
+  }, [boards, addActivity]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  }, []);
+    setTasks(prev => prev.map(t => {
+      if (t.id === id) {
+        // If updating status or completing
+        addActivity({
+          type: 'goal_edited',
+          message: `Updated task '${updates.title || t.title}'`,
+          goalTitle: updates.title || t.title
+        });
+        return { ...t, ...updates };
+      }
+      return t;
+    }));
+  }, [addActivity]);
 
   const deleteTask = useCallback((id: string) => {
     setTasks(prev => {
       const task = prev.find(t => t.id === id);
       const board = boards.find(b => b.id === task?.boardId);
-      if (task) addActivity(`Deleted task "${task.title}"`, board?.name ?? "");
+      if (task) {
+        addActivity({
+          type: 'goal_deleted',
+          message: `Deleted task '${task.title}'`,
+          boardName: board?.name ?? "",
+          goalTitle: task.title
+        });
+      }
       return prev.filter(t => t.id !== id);
     });
-  }, [boards]);
+  }, [boards, addActivity]);
 
   const moveTask = useCallback((taskId: string, toColumnId: string) => {
     setTasks(prev => {
       const task = prev.find(t => t.id === taskId);
       const toCol = columns.find(c => c.id === toColumnId);
       const board = boards.find(b => b.id === task?.boardId);
-      if (task && toCol) addActivity(`Moved "${task.title}" to ${toCol.title}`, board?.name ?? "");
+      if (task && toCol) {
+        addActivity({
+          type: 'goal_moved',
+          message: `Moved '${task.title}' to ${toCol.title}`,
+          boardName: board?.name ?? "",
+          goalTitle: task.title
+        });
+      }
       return prev.map(t => t.id === taskId ? { ...t, columnId: toColumnId } : t);
     });
-  }, [columns, boards]);
+  }, [columns, boards, addActivity]);
 
   const updateColumn = useCallback((id: string, title: string) => {
     setColumns(prev => prev.map(c => c.id === id ? { ...c, title } : c));
@@ -456,20 +528,96 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Goal Tracker Methods
   const addGoal = useCallback((goal: Omit<Goal, "id">) => {
-    setGoals(prev => [{ id: `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`, ...goal }, ...prev]);
-  }, []);
+    const newId = `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
+    setGoals(prev => [{ id: newId, ...goal }, ...prev]);
+    addActivity({
+      type: 'goal_created',
+      message: `Created task '${goal.title}'`,
+      goalTitle: goal.title
+    });
+  }, [addActivity]);
 
   const updateGoal = useCallback((id: string, updates: Partial<Goal>) => {
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
-  }, []);
+    setGoals(prev => prev.map(g => {
+      if (g.id === id) {
+        if (updates.completed !== undefined && updates.completed !== g.completed) {
+          addActivity({
+            type: 'goal_completed',
+            message: updates.completed ? `Completed '${g.title}'` : `Reopened '${g.title}'`,
+            goalTitle: g.title
+          });
+        } else if (updates.status !== undefined && updates.status !== g.status) {
+          const stageName = customConfig.boardStages.find(s => s.id === updates.status)?.name || updates.status;
+          addActivity({
+            type: 'goal_moved',
+            message: `Moved '${g.title}' to ${stageName}`,
+            goalTitle: g.title
+          });
+        } else if (updates.title !== undefined && updates.title !== g.title) {
+          addActivity({
+            type: 'goal_edited',
+            message: `Updated '${updates.title}'`,
+            goalTitle: updates.title
+          });
+        }
+        return { ...g, ...updates };
+      }
+      return g;
+    }));
+  }, [addActivity, customConfig.boardStages]);
 
   const deleteGoal = useCallback((id: string) => {
-    setGoals(prev => prev.filter(g => g.id !== id));
-  }, []);
+    setGoals(prev => {
+      const g = prev.find(x => x.id === id);
+      if (g) {
+        addActivity({
+          type: 'goal_deleted',
+          message: `Deleted '${g.title}'`,
+          goalTitle: g.title
+        });
+      }
+      return prev.filter(x => x.id !== id);
+    });
+  }, [addActivity]);
 
   const toggleGoal = useCallback((id: string) => {
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, completed: !g.completed, status: !g.completed ? "done" : "todo" } : g));
-  }, []);
+    setGoals(prev => prev.map(g => {
+      if (g.id === id) {
+        const nextCompleted = !g.completed;
+        addActivity({
+          type: 'goal_completed',
+          message: nextCompleted ? `Completed '${g.title}'` : `Reopened '${g.title}'`,
+          goalTitle: g.title
+        });
+        return { ...g, completed: nextCompleted, status: nextCompleted ? "done" : "todo" };
+      }
+      return g;
+    }));
+  }, [addActivity]);
+
+  const carryForwardGoal = useCallback((id: string) => {
+    setGoals(prev => {
+      const goal = prev.find(g => g.id === id);
+      if (goal) {
+        const todayStr = format(new Date(), "yyyy-MM-dd");
+        const newId = `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
+        const updated = [{
+          ...goal,
+          id: newId,
+          date: todayStr,
+          completed: false,
+          status: "todo"
+        }, ...prev];
+        addActivity({
+          type: 'carried_forward',
+          message: `Carried forward '${goal.title}'`,
+          goalTitle: goal.title
+        });
+        return updated;
+      }
+      return prev;
+    });
+  }, [addActivity]);
 
   const addTemplate = useCallback((template: Omit<GoalTemplate, "id">) => {
     setTemplates(prev => [{ id: `gt${Date.now()}`, ...template }, ...prev]);
@@ -487,7 +635,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // --- Streak Goals Methods ---
-  
   const generateMissingStreakInstances = useCallback((streak: StreakGoal, currentGoals: Goal[]) => {
     if (!streak.active) return [];
 
@@ -523,8 +670,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             priority: streak.priority,
             notes: streak.notes,
             completed: false,
-            date: dateStr,
             streakId: streak.id,
+            date: dateStr,
             status: "todo"
           });
         }
@@ -574,10 +721,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createBoard, deleteBoard, createTask, updateTask, deleteTask, moveTask,
       updateColumn, deleteColumn, setTheme, getAvatarColor, avatarColors: avatarColorMap,
       goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig,
-      addGoal, updateGoal, deleteGoal, toggleGoal, addTemplate, deleteTemplate, setDayMetadata,
+      addGoal, updateGoal, deleteGoal, toggleGoal, carryForwardGoal, addTemplate, deleteTemplate, setDayMetadata,
       addStreakGoal, updateStreakGoal, deleteStreakGoal, regenerateAllStreakGoals, generateMissingStreakInstances,
       setGroqApiKey, toggleAiFeature, updateCustomConfig,
-      userProfile, updateUserProfile
+      userProfile, updateUserProfile,
+      activities, addActivity, markAllActivitiesAsRead
     }}>
       {children}
     </AppContext.Provider>

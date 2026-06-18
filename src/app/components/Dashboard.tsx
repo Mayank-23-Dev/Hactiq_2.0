@@ -6,6 +6,7 @@ import { useApp } from "../store";
 import { Layout } from "./Layout";
 import { TaskModal } from "../../components/TaskModal";
 import { Button } from "../../components/ui/button";
+import { RecentActivity } from "./RecentActivity";
 
 const COLORS = [
   "#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#14b8a6",
@@ -129,18 +130,7 @@ export function Dashboard() {
 
           {/* Activity feed */}
           <div className="lg:col-span-1">
-            <h3 className="font-medium text-foreground mb-4">Recent Activity</h3>
-            <div className="space-y-3">
-              {activity.map(item => (
-                <div key={item.id} className="flex gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 shrink-0" />
-                  <div>
-                    <p className="text-sm text-foreground leading-snug">{item.text}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.boardName} · {item.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RecentActivity limit={6} showSeeAll={true} />
           </div>
         </div>
       </div>

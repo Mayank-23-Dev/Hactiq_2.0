@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/app/components/Layout.tsx
+import { useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   LayoutDashboard, Settings, Bell, Search, Sun, Moon, Menu, X,
@@ -7,7 +8,10 @@ import {
 } from "lucide-react";
 import { useApp } from "../store";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { Particles } from "./ui/particles";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./ui/tooltip";
+import { formatDistanceToNow, parseISO } from "date-fns";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,7 +19,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title = "Dashboard" }: LayoutProps) {
-  const { boards, theme, setTheme, userProfile, getAvatarColor } = useApp();
+  const { boards, theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -38,205 +42,272 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
+  const unreadCount = useMemo(() => activities.filter(a => !a.read).length, [activities]);
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
-      {/* Sidebar */}
-      <aside
-        className={`flex flex-col border-r border-border bg-sidebar transition-all duration-300 shrink-0 ${
-          isCollapsed ? "w-16" : "w-60"
-        }`}
-      >
-        {/* Logo and Toggle */}
-        <div className={`flex ${!isCollapsed ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
-          <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
-          {!isCollapsed && (
-            <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
-          )}
-          <button
-            onClick={toggleSidebar}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0"
-            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
-        </div>
+    <TooltipProvider>
+      <div className="flex h-screen bg-background text-foreground overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
+        {/* Sidebar */}
+        <aside
+          className={`relative z-30 flex flex-col border-r border-border bg-sidebar transition-all duration-300 shrink-0 ${
+            isCollapsed ? "w-16" : "w-60"
+          }`}
+        >
+          {/* Logo and Toggle */}
+          <div className={`flex ${!isCollapsed ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
+            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
+            {!isCollapsed && (
+              <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0"
+                  aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                >
+                  {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
 
-        {/* Nav */}
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          <NavItem to="/" icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/")} collapsed={isCollapsed} />
+          {/* Nav */}
+          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+            <NavItem to="/" icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/")} collapsed={isCollapsed} />
+            <NavItem to="/activities" icon={<Bell size={16} />} label="Activities" active={isActive("/activities")} collapsed={isCollapsed} badge={unreadCount} />
 
-          {/* Goal Tracker dropdown */}
-          <div>
-            <button
-              onClick={() => !isCollapsed && setGoalsExpanded(!goalsExpanded)}
-              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
-            >
-              <Target size={16} className="shrink-0 text-primary" />
-              {!isCollapsed && (
-                <>
+            {/* Goal Tracker Section */}
+            {isCollapsed ? (
+              <>
+                <NavItem to="/goals" icon={<Target size={16} className="text-primary" />} label="Goal Tracker" active={isActive("/goals")} collapsed={isCollapsed} />
+                <NavItem to="/goal-board" icon={<Trello size={16} />} label="Goal Board" active={isActive("/goal-board")} collapsed={isCollapsed} />
+              </>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setGoalsExpanded(!goalsExpanded)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                >
+                  <Target size={16} className="shrink-0 text-primary" />
                   <span className="flex-1 text-left font-medium">Goal Tracker</span>
                   <ChevronDown size={14} className={`transition-transform ${goalsExpanded ? "rotate-180" : ""}`} />
-                </>
-              )}
-            </button>
-            {!isCollapsed && goalsExpanded && (
-              <div className="ml-4 mt-1 space-y-0.5">
-                <SubNavItem to="/goals" icon={<Target size={14} />} label="Today" active={isActive("/goals")} />
-                <SubNavItem to="/goal-board" icon={<Trello size={14} />} label="Goal Board" active={isActive("/goal-board")} />
-                <SubNavItem to="/goals/streaks" icon={<Target size={14} />} label="Streak Goals" active={isActive("/goals/streaks")} />
-                <SubNavItem to="/goals/yesterday" icon={<History size={14} />} label="Yesterday" active={isActive("/goals/yesterday")} />
-                <SubNavItem to="/goals/calendar" icon={<Calendar size={14} />} label="Calendar" active={isActive("/goals/calendar")} />
-                <SubNavItem to="/goals/stats" icon={<BarChart2 size={14} />} label="Stats" active={isActive("/goals/stats")} />
-                <SubNavItem to="/goals/database" icon={<Database size={14} />} label="All Goals" active={isActive("/goals/database")} />
-                <SubNavItem to="/goals/templates" icon={<FileText size={14} />} label="Templates" active={isActive("/goals/templates")} />
+                </button>
+                {goalsExpanded && (
+                  <div className="ml-4 mt-1 space-y-0.5">
+                    <SubNavItem to="/goals" icon={<Target size={14} />} label="Today" active={isActive("/goals")} />
+                    <SubNavItem to="/goal-board" icon={<Trello size={14} />} label="Goal Board" active={isActive("/goal-board")} />
+                    <SubNavItem to="/goals/streaks" icon={<Target size={14} />} label="Streak Goals" active={isActive("/goals/streaks")} />
+                    <SubNavItem to="/goals/yesterday" icon={<History size={14} />} label="Yesterday" active={isActive("/goals/yesterday")} />
+                    <SubNavItem to="/goals/calendar" icon={<Calendar size={14} />} label="Calendar" active={isActive("/goals/calendar")} />
+                    <SubNavItem to="/goals/stats" icon={<BarChart2 size={14} />} label="Stats" active={isActive("/goals/stats")} />
+                    <SubNavItem to="/goals/database" icon={<Database size={14} />} label="All Goals" active={isActive("/goals/database")} />
+                    <SubNavItem to="/goals/templates" icon={<FileText size={14} />} label="Templates" active={isActive("/goals/templates")} />
+                  </div>
+                )}
               </div>
             )}
-          </div>
 
-          {/* Boards dropdown */}
-          <div>
-            <button
-              onClick={() => !isCollapsed && setBoardsExpanded(!boardsExpanded)}
-              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
-            >
-              <Trello size={16} className="shrink-0" />
-              {!isCollapsed && (
-                <>
+            {/* Boards Section */}
+            {isCollapsed ? (
+              boards.map(board => (
+                <Tooltip key={board.id}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/board/${board.id}`}
+                      className={`flex items-center justify-center px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        location.pathname === `/board/${board.id}`
+                          ? "bg-sidebar-accent text-sidebar-primary"
+                          : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      }`}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: board.color }} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {board.name}
+                  </TooltipContent>
+                </Tooltip>
+              ))
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setBoardsExpanded(!boardsExpanded)}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                >
+                  <Trello size={16} className="shrink-0" />
                   <span className="flex-1 text-left">Boards</span>
                   <ChevronDown size={14} className={`transition-transform ${boardsExpanded ? "rotate-180" : ""}`} />
-                </>
-              )}
-            </button>
-            {!isCollapsed && boardsExpanded && (
-              <div className="ml-4 mt-1 space-y-0.5">
-                {boards.map(board => (
-                  <button
-                    key={board.id}
-                    onClick={() => navigate(`/board/${board.id}`)}
-                    className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm transition-colors ${
-                      location.pathname === `/board/${board.id}`
-                        ? "bg-sidebar-accent text-sidebar-primary"
-                        : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: board.color }} />
-                    <span className="truncate">{board.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" active={isActive("/settings")} collapsed={isCollapsed} />
-        </nav>
-
-        {/* User */}
-        <div className="p-2 border-t border-border relative">
-          <button
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className={`flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
-          >
-            <Avatar className="w-7 h-7 shrink-0">
-              {userProfile.avatarUrl ? (
-                <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
-              ) : null}
-              <AvatarFallback className="text-[10px] font-semibold bg-muted dark:bg-gray-800 text-foreground">
-                {userProfile.avatar}
-              </AvatarFallback>
-            </Avatar>
-            {!isCollapsed && (
-              <>
-                <div className="flex-1 text-left overflow-hidden">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
-                  <p className="text-muted-foreground truncate" style={{ fontSize: 11 }}>{userProfile.email}</p>
-                </div>
-                <ChevronDown size={14} className="text-muted-foreground" />
-              </>
-            )}
-          </button>
-          {userMenuOpen && (
-            <div className="absolute bottom-full left-2 right-2 mb-1 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
-              <button 
-                onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-              >
-                <User size={14} /> Profile
-              </button>
-              <div className="my-1 border-t border-border" />
-              <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left">
-                <LogOut size={14} /> Log out
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar */}
-        <header className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background shrink-0">
-          <h1 className="font-semibold text-foreground">{title}</h1>
-          <div className="flex-1" />
-
-          {/* Search */}
-          <div className="relative">
-            {searchOpen ? (
-              <div className="flex items-center gap-2 border border-border rounded-lg px-3 py-1.5 bg-input-background">
-                <Search size={14} className="text-muted-foreground" />
-                <input autoFocus placeholder="Search tasks…" className="bg-transparent outline-none text-sm w-40" onBlur={() => setSearchOpen(false)} />
-                <button onClick={() => setSearchOpen(false)}><X size={14} className="text-muted-foreground" /></button>
-              </div>
-            ) : (
-              <button onClick={() => setSearchOpen(true)} className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
-                <Search size={16} />
-              </button>
-            )}
-          </div>
-
-          {/* Notifications */}
-          <div className="relative">
-            <button
-              onClick={() => setNotifOpen(!notifOpen)}
-              className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative"
-            >
-              <Bell size={16} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
-            </button>
-            {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-popover border border-border rounded-lg shadow-lg z-50 py-2">
-                <p className="px-3 pb-2 text-sm font-medium border-b border-border">Notifications</p>
-                {[
-                  "Alex moved a task to Done",
-                  "BK commented on Onboarding flow",
-                  "New board 'Q4 Planning' was created",
-                ].map((n, i) => (
-                  <div key={i} className="px-3 py-2 text-sm hover:bg-accent cursor-pointer">
-                    <p>{n}</p>
-                    <p className="text-muted-foreground" style={{ fontSize: 11 }}>{i === 0 ? "5 min ago" : i === 1 ? "1 hr ago" : "3 hrs ago"}</p>
+                </button>
+                {boardsExpanded && (
+                  <div className="ml-4 mt-1 space-y-0.5">
+                    {boards.map(board => (
+                      <button
+                        key={board.id}
+                        type="button"
+                        onClick={() => navigate(`/board/${board.id}`)}
+                        className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm transition-colors ${
+                          location.pathname === `/board/${board.id}`
+                            ? "bg-sidebar-accent text-sidebar-primary"
+                            : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: board.color }} />
+                        <span className="truncate">{board.name}</span>
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
+              </div>
+            )}
+
+            <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" active={isActive("/settings")} collapsed={isCollapsed} />
+          </nav>
+
+          {/* User */}
+          <div className="p-2 border-t border-border relative">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className={`flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
+                >
+                  <Avatar className="w-7 h-7 shrink-0">
+                    {userProfile.avatarUrl ? (
+                      <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
+                    ) : null}
+                    <AvatarFallback className="text-[10px] font-semibold bg-muted dark:bg-gray-800 text-foreground">
+                      {userProfile.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!isCollapsed && (
+                    <>
+                      <div className="flex-1 text-left overflow-hidden">
+                        <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
+                        <p className="text-muted-foreground truncate" style={{ fontSize: 11 }}>{userProfile.email}</p>
+                      </div>
+                      <ChevronDown size={14} className="text-muted-foreground" />
+                    </>
+                  )}
+                </button>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right">
+                  {userProfile.name}
+                </TooltipContent>
+              )}
+            </Tooltip>
+            {userMenuOpen && (
+              <div className="absolute bottom-full left-2 right-2 mb-1 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
+                <button 
+                  type="button"
+                  onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                >
+                  <User size={14} /> Profile
+                </button>
+                <div className="my-1 border-t border-border" />
+                <button type="button" className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left">
+                  <LogOut size={14} /> Log out
+                </button>
               </div>
             )}
           </div>
+        </aside>
 
-          {/* Theme toggle */}
-          <ThemeToggle />
-        </header>
+        {/* Main */}
+        <div className="flex-1 flex flex-col min-w-0 relative bg-background">
+          <Particles className="absolute inset-0 z-0 opacity-40 dark:opacity-20 pointer-events-none" />
+          {/* Topbar */}
+          <header className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background/80 backdrop-blur shrink-0 relative z-10">
+            <h1 className="font-semibold text-foreground">{title}</h1>
+            <div className="flex-1" />
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+            {/* Search */}
+            <div className="relative">
+              {searchOpen ? (
+                <div className="flex items-center gap-2 border border-border rounded-lg px-3 py-1.5 bg-input-background">
+                  <Search size={14} className="text-muted-foreground" />
+                  <input autoFocus placeholder="Search tasks…" className="bg-transparent outline-none text-sm w-40" onBlur={() => setSearchOpen(false)} />
+                  <button onClick={() => setSearchOpen(false)}><X size={14} className="text-muted-foreground" /></button>
+                </div>
+              ) : (
+                <button onClick={() => setSearchOpen(true)} className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                  <Search size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifOpen(!notifOpen);
+                  if (!notifOpen) {
+                    markAllActivitiesAsRead();
+                  }
+                }}
+                className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative"
+              >
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1.5 px-1 min-w-4 h-4 text-[9px] font-bold bg-primary text-primary-foreground flex items-center justify-center rounded-full leading-none">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-popover border border-border rounded-lg shadow-lg z-50 py-2">
+                  <p className="px-3 pb-2 text-sm font-medium border-b border-border">Notifications</p>
+                  {activities.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No recent activity</p>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto divide-y divide-border">
+                      {activities.slice(0, 5).map((act) => (
+                        <div key={act.id} className="px-3 py-2 text-xs hover:bg-accent transition-colors">
+                          <p className="text-foreground leading-snug">{act.message}</p>
+                          <p className="text-muted-foreground mt-0.5" style={{ fontSize: 9 }}>
+                            {formatDistanceToNow(parseISO(act.timestamp), { addSuffix: true })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="border-t border-border mt-1 pt-1 text-center">
+                    <Link to="/activities" onClick={() => setNotifOpen(false)} className="text-xs text-primary hover:underline font-semibold py-1.5 block">
+                      View all activities
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Theme toggle */}
+            <ThemeToggle />
+          </header>
+
+          {/* Content */}
+          <main className="flex-1 overflow-y-auto relative z-10 bg-transparent">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
-function NavItem({ to, icon, label, active, collapsed }: {
-  to: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean;
+function NavItem({ to, icon, label, active, collapsed, badge }: {
+  to: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; badge?: number;
 }) {
-  return (
+  const link = (
     <Link
       to={to}
       className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
@@ -246,12 +317,36 @@ function NavItem({ to, icon, label, active, collapsed }: {
           ? "bg-sidebar-accent text-sidebar-primary font-medium"
           : "text-sidebar-foreground hover:bg-sidebar-accent"
       }`}
-      title={collapsed ? label : undefined}
     >
-      <span className="shrink-0">{icon}</span>
-      {!collapsed && <span>{label}</span>}
+      <div className="relative flex items-center shrink-0">
+        <span>{icon}</span>
+        {badge !== undefined && badge > 0 && collapsed && (
+          <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-primary rounded-full ring-2 ring-background animate-pulse" />
+        )}
+      </div>
+      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      {!collapsed && badge !== undefined && badge > 0 && (
+        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-primary text-primary-foreground rounded-full leading-none shrink-0">
+          {badge}
+        </span>
+      )}
     </Link>
   );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {link}
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return link;
 }
 
 function SubNavItem({ to, icon, label, active }: {
