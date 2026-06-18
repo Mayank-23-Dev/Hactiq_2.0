@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useTheme } from "next-themes";
+import { useAuth } from "../contexts/AuthContext";
 
 export type Priority = string;
 
@@ -46,6 +47,8 @@ export interface UserProfile {
   name: string;
   email: string;
   avatar: string;
+  bio?: string;
+  avatarUrl?: string;
 }
 
 export interface CustomConfig {
@@ -253,7 +256,9 @@ const initialMetadata: Record<string, DayMetadata> = {
 const initialProfile: UserProfile = {
   name: "Alex Chen",
   email: "alex@company.co",
-  avatar: "AC"
+  avatar: "AC",
+  bio: "Product Designer & Developer",
+  avatarUrl: ""
 };
 
 export interface AppState {
@@ -332,7 +337,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dailyMetadata, setDailyMetadata] = useState<Record<string, DayMetadata>>(() => safeParse("gt_metadata", initialMetadata));
   const [groqApiKey, setGroqApiKey] = useState<string>(() => safeParse("gt_groq_api_key", ""));
   const [customConfig, setCustomConfig] = useState<CustomConfig>(() => safeParse("gt_custom_config", initialCustomConfig));
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => safeParse("gt_user_profile", initialProfile));
+  const { userProfile, updateUserProfile } = useAuth();
   const [aiFeaturesConfig, setAiFeaturesConfig] = useState<Record<string, boolean>>(() => safeParse("gt_ai_features", {
     naturalLanguageEntry: true,
     autoCategorization: true,
@@ -358,8 +363,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("gt_groq_api_key", JSON.stringify(groqApiKey));
     localStorage.setItem("gt_ai_features", JSON.stringify(aiFeaturesConfig));
     localStorage.setItem("gt_custom_config", JSON.stringify(customConfig));
-    localStorage.setItem("gt_user_profile", JSON.stringify(userProfile));
-  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig, userProfile]);
+  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig]);
   
   const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
 
@@ -374,18 +378,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateCustomConfig = useCallback((updates: Partial<CustomConfig>) => {
     setCustomConfig(prev => ({ ...prev, ...updates }));
-  }, []);
-
-  const updateUserProfile = useCallback((updates: Partial<UserProfile>) => {
-    setUserProfile(prev => {
-      const updated = { ...prev, ...updates };
-      if (updates.name) {
-        const parts = updates.name.trim().split(/\s+/);
-        const initials = parts.map(p => p[0]).join("").toUpperCase().slice(0, 2);
-        updated.avatar = initials || "U";
-      }
-      return updated;
-    });
   }, []);
 
   const avatarColorMap: Record<string, string> = {};

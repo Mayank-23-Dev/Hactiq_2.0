@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   LayoutDashboard, Settings, Bell, Search, Sun, Moon, Menu, X,
-  ChevronDown, LogOut, User, Trello, ChevronRight, Target,
+  ChevronDown, LogOut, User, Trello, ChevronLeft, ChevronRight, Target,
   History, Calendar, BarChart2, Database, FileText
 } from "lucide-react";
 import { useApp } from "../store";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,7 +18,19 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
   const { boards, theme, setTheme, userProfile, getAvatarColor } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem("hactiq_sidebar_collapsed") === "true";
+  });
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("hactiq_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
   const [boardsExpanded, setBoardsExpanded] = useState(true);
   const [goalsExpanded, setGoalsExpanded] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -31,43 +44,43 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
       {/* Sidebar */}
       <aside
         className={`flex flex-col border-r border-border bg-sidebar transition-all duration-300 shrink-0 ${
-          sidebarOpen ? "w-60" : "w-14"
+          isCollapsed ? "w-16" : "w-60"
         }`}
       >
         {/* Logo and Toggle */}
-        <div className={`flex ${sidebarOpen ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
+        <div className={`flex ${!isCollapsed ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
           <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
-          {sidebarOpen && (
+          {!isCollapsed && (
             <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
           )}
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0 ${!sidebarOpen ? "mt-1" : ""}`}
-            aria-label="Toggle Sidebar"
+            onClick={toggleSidebar}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0"
+            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {sidebarOpen ? <ChevronRight size={16} /> : <Menu size={16} />}
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          <NavItem to="/" icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/")} collapsed={!sidebarOpen} />
+          <NavItem to="/" icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/")} collapsed={isCollapsed} />
 
           {/* Goal Tracker dropdown */}
           <div>
             <button
-              onClick={() => setGoalsExpanded(!goalsExpanded)}
-              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors ${!sidebarOpen ? "justify-center" : ""}`}
+              onClick={() => !isCollapsed && setGoalsExpanded(!goalsExpanded)}
+              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
             >
               <Target size={16} className="shrink-0 text-primary" />
-              {sidebarOpen && (
+              {!isCollapsed && (
                 <>
                   <span className="flex-1 text-left font-medium">Goal Tracker</span>
                   <ChevronDown size={14} className={`transition-transform ${goalsExpanded ? "rotate-180" : ""}`} />
                 </>
               )}
             </button>
-            {sidebarOpen && goalsExpanded && (
+            {!isCollapsed && goalsExpanded && (
               <div className="ml-4 mt-1 space-y-0.5">
                 <SubNavItem to="/goals" icon={<Target size={14} />} label="Today" active={isActive("/goals")} />
                 <SubNavItem to="/goal-board" icon={<Trello size={14} />} label="Goal Board" active={isActive("/goal-board")} />
@@ -84,18 +97,18 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
           {/* Boards dropdown */}
           <div>
             <button
-              onClick={() => setBoardsExpanded(!boardsExpanded)}
-              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors ${!sidebarOpen ? "justify-center" : ""}`}
+              onClick={() => !isCollapsed && setBoardsExpanded(!boardsExpanded)}
+              className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
             >
               <Trello size={16} className="shrink-0" />
-              {sidebarOpen && (
+              {!isCollapsed && (
                 <>
                   <span className="flex-1 text-left">Boards</span>
                   <ChevronDown size={14} className={`transition-transform ${boardsExpanded ? "rotate-180" : ""}`} />
                 </>
               )}
             </button>
-            {sidebarOpen && boardsExpanded && (
+            {!isCollapsed && boardsExpanded && (
               <div className="ml-4 mt-1 space-y-0.5">
                 {boards.map(board => (
                   <button
@@ -115,25 +128,24 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
             )}
           </div>
 
-          <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" active={isActive("/settings")} collapsed={!sidebarOpen} />
+          <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" active={isActive("/settings")} collapsed={isCollapsed} />
         </nav>
 
         {/* User */}
         <div className="p-2 border-t border-border relative">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className={`flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors ${!sidebarOpen ? "justify-center" : ""}`}
+            className={`flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
           >
-            <div 
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 font-medium" 
-              style={{ 
-                fontSize: 11,
-                backgroundColor: getAvatarColor(userProfile.avatar)
-              }}
-            >
-              {userProfile.avatar}
-            </div>
-            {sidebarOpen && (
+            <Avatar className="w-7 h-7 shrink-0">
+              {userProfile.avatarUrl ? (
+                <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
+              ) : null}
+              <AvatarFallback className="text-[10px] font-semibold bg-muted dark:bg-gray-800 text-foreground">
+                {userProfile.avatar}
+              </AvatarFallback>
+            </Avatar>
+            {!isCollapsed && (
               <>
                 <div className="flex-1 text-left overflow-hidden">
                   <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
