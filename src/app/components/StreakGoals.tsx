@@ -1,11 +1,12 @@
+// src/app/components/StreakGoals.tsx
 import React, { useState, useEffect } from "react";
-import { Layout } from "../Layout";
-import { useApp, Priority, StreakGoal } from "../../store";
+import { Layout } from "./Layout";
+import { useApp, Priority, StreakGoal } from "../store";
 import { Plus, Trash2, Calendar, Target, Play, Pause, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { format, addMonths } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PriorityBadge } from "./Shared";
+import { PriorityBadge } from "./goals/Shared";
 
 export function StreakGoals() {
   const { streakGoals, addStreakGoal, updateStreakGoal, deleteStreakGoal, goals, customConfig } = useApp();

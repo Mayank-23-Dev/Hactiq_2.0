@@ -14,7 +14,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title = "Dashboard" }: LayoutProps) {
-  const { boards, theme, setTheme } = useApp();
+  const { boards, theme, setTheme, userProfile, getAvatarColor } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -34,15 +34,16 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
           sidebarOpen ? "w-60" : "w-14"
         }`}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-2 px-3 py-4 border-b border-border">
+        {/* Logo and Toggle */}
+        <div className={`flex ${sidebarOpen ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
           <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
           {sidebarOpen && (
-            <span className="font-semibold text-sidebar-foreground truncate">Hactiq</span>
+            <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+            className={`text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0 ${!sidebarOpen ? "mt-1" : ""}`}
+            aria-label="Toggle Sidebar"
           >
             {sidebarOpen ? <ChevronRight size={16} /> : <Menu size={16} />}
           </button>
@@ -121,16 +122,22 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
         <div className="p-2 border-t border-border relative">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors"
+            className={`flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors ${!sidebarOpen ? "justify-center" : ""}`}
           >
-            <div className="w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center text-white shrink-0" style={{ fontSize: 11 }}>
-              AC
+            <div 
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 font-medium" 
+              style={{ 
+                fontSize: 11,
+                backgroundColor: getAvatarColor(userProfile.avatar)
+              }}
+            >
+              {userProfile.avatar}
             </div>
             {sidebarOpen && (
               <>
                 <div className="flex-1 text-left overflow-hidden">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">Alex Chen</p>
-                  <p className="text-muted-foreground truncate" style={{ fontSize: 11 }}>alex@company.co</p>
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
+                  <p className="text-muted-foreground truncate" style={{ fontSize: 11 }}>{userProfile.email}</p>
                 </div>
                 <ChevronDown size={14} className="text-muted-foreground" />
               </>
@@ -138,11 +145,14 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
           </button>
           {userMenuOpen && (
             <div className="absolute bottom-full left-2 right-2 mb-1 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
-              <button className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors">
+              <button 
+                onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+              >
                 <User size={14} /> Profile
               </button>
               <div className="my-1 border-t border-border" />
-              <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors">
+              <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left">
                 <LogOut size={14} /> Log out
               </button>
             </div>
@@ -203,7 +213,7 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

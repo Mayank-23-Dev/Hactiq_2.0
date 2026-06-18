@@ -1,6 +1,7 @@
+// src/app/components/TodayDashboard.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, MoreHorizontal, Calendar, CheckSquare, Trash2, X, Eye } from "lucide-react";
+import { Plus, CheckSquare, Calendar, Trash2, X, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "../store";
 import { Layout } from "./Layout";
@@ -11,7 +12,7 @@ const COLORS = [
   "#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#14b8a6",
 ];
 
-export function Dashboard() {
+export function TodayDashboard() {
   const { boards, columns, tasks, activity, createBoard, deleteBoard, userProfile } = useApp();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
@@ -52,7 +53,7 @@ export function Dashboard() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-foreground mb-1">{getGreeting()}, {userProfile.name}</h2>
-            <p className="text-sm text-muted-foreground">You have {tasks.filter(t => t.dueDate && t.dueDate <= new Date().toISOString().split("T")[0]).length} overdue tasks across your boards.</p>
+            <p className="text-sm text-muted-foreground font-medium">You have {tasks.filter(t => t.dueDate && t.dueDate <= new Date().toISOString().split("T")[0]).length} overdue tasks across your boards.</p>
           </div>
           <Button onClick={() => setShowTaskModal(true)} variant="outline" className="gap-2">
             <Eye size={16} /> Preview Task Modal

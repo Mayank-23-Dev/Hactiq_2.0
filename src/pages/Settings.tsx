@@ -1,13 +1,14 @@
+// src/pages/Settings.tsx
 import { useState } from "react";
 import { Sun, Moon, Monitor, Bell, Shield, User, Download, Trash2, Bot, CheckCircle, Sliders, Plus, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { useApp } from "../store";
-import { Layout } from "./Layout";
-import { callGroqAPI } from "../../lib/groq";
+import { useApp } from "../app/store";
+import { Layout } from "../app/components/Layout";
+import { callGroqAPI } from "../lib/groq";
 
 type Tab = "profile" | "appearance" | "notifications" | "account" | "ai" | "customization";
 
-export function Settings() {
+export default function SettingsPage() {
   const { 
     theme, setTheme, 
     groqApiKey, setGroqApiKey, 
@@ -61,7 +62,7 @@ export function Settings() {
 
   return (
     <Layout title="Settings">
-      <div className="flex flex-col flex-1 max-w-3xl mx-auto p-6 w-full">
+      <div className="flex flex-col flex-grow max-w-3xl mx-auto p-6 w-full">
         <div className="flex gap-1 mb-8 border-b border-border overflow-x-auto">
           {tabs.map(t => (
             <button
@@ -96,30 +97,35 @@ export function Settings() {
               </div>
             </div>
 
-            <FormField label="Full name">
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
-            </FormField>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1.5">Full name</label>
+                <input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
 
-            <FormField label="Email address">
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
-            </FormField>
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1.5">Email address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
 
-            <FormField label="Bio">
-              <textarea
-                placeholder="Tell your team about yourself…"
-                rows={3}
-                className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
-              />
-            </FormField>
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1.5">Bio</label>
+                <textarea
+                  placeholder="Tell your team about yourself…"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-input-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
+                />
+              </div>
+            </div>
 
             <button
               onClick={() => {

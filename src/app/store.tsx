@@ -42,6 +42,12 @@ export interface DayMetadata {
   energy?: string;
 }
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  avatar: string;
+}
+
 export interface CustomConfig {
   categories: { id: string; name: string; order: number }[];
   priorities: { id: string; name: string; color: string; order: number }[];
@@ -244,6 +250,12 @@ const initialMetadata: Record<string, DayMetadata> = {
   [todayStr]: { mood: "Good", energy: "High" }
 };
 
+const initialProfile: UserProfile = {
+  name: "Alex Chen",
+  email: "alex@company.co",
+  avatar: "AC"
+};
+
 export interface AppState {
   boards: Board[];
   columns: Column[];
@@ -258,6 +270,7 @@ export interface AppState {
   groqApiKey: string;
   aiFeaturesConfig: Record<string, boolean>;
   customConfig: CustomConfig;
+  userProfile: UserProfile;
 }
 
 export interface AppContextValue extends AppState {
@@ -281,6 +294,7 @@ export interface AppContextValue extends AppState {
   updateStreakGoal: (id: string, updates: Partial<StreakGoal>) => void;
   deleteStreakGoal: (id: string) => void;
   regenerateAllStreakGoals: () => void;
+  generateMissingStreakInstances: (streak: StreakGoal, currentGoals: Goal[]) => Goal[];
   // Templates & Metadata
   addTemplate: (template: Omit<GoalTemplate, "id">) => void;
   deleteTemplate: (id: string) => void;
@@ -289,6 +303,8 @@ export interface AppContextValue extends AppState {
   setGroqApiKey: (key: string) => void;
   toggleAiFeature: (featureKey: string, enabled: boolean) => void;
   updateCustomConfig: (updates: Partial<CustomConfig>) => void;
+  // User Profile
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -316,6 +332,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dailyMetadata, setDailyMetadata] = useState<Record<string, DayMetadata>>(() => safeParse("gt_metadata", initialMetadata));
   const [groqApiKey, setGroqApiKey] = useState<string>(() => safeParse("gt_groq_api_key", ""));
   const [customConfig, setCustomConfig] = useState<CustomConfig>(() => safeParse("gt_custom_config", initialCustomConfig));
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => safeParse("gt_user_profile", initialProfile));
   const [aiFeaturesConfig, setAiFeaturesConfig] = useState<Record<string, boolean>>(() => safeParse("gt_ai_features", {
     naturalLanguageEntry: true,
     autoCategorization: true,
@@ -341,7 +358,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("gt_groq_api_key", JSON.stringify(groqApiKey));
     localStorage.setItem("gt_ai_features", JSON.stringify(aiFeaturesConfig));
     localStorage.setItem("gt_custom_config", JSON.stringify(customConfig));
-  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig]);
+    localStorage.setItem("gt_user_profile", JSON.stringify(userProfile));
+  }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig, userProfile]);
   
   const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
 
@@ -356,6 +374,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateCustomConfig = useCallback((updates: Partial<CustomConfig>) => {
     setCustomConfig(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  const updateUserProfile = useCallback((updates: Partial<UserProfile>) => {
+    setUserProfile(prev => {
+      const updated = { ...prev, ...updates };
+      if (updates.name) {
+        const parts = updates.name.trim().split(/\s+/);
+        const initials = parts.map(p => p[0]).join("").toUpperCase().slice(0, 2);
+        updated.avatar = initials || "U";
+      }
+      return updated;
+    });
   }, []);
 
   const avatarColorMap: Record<string, string> = {};
@@ -466,7 +496,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // --- Streak Goals Methods ---
   
-  const generateInstancesForStreak = useCallback((streak: StreakGoal, currentGoals: Goal[]) => {
+  const generateMissingStreakInstances = useCallback((streak: StreakGoal, currentGoals: Goal[]) => {
     if (!streak.active) return [];
 
     const newGoals: Goal[] = [];
@@ -474,7 +504,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const end = new Date(streak.endDate + "T00:00:00");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    // Don't generate too far into the future to save space. Generate up to End Date or 30 days out, whichever is closer.
     const maxDate = new Date(today);
     maxDate.setDate(today.getDate() + 30);
     const actualEnd = end < maxDate ? end : maxDate;
@@ -493,7 +522,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       else if (streak.frequency === 'custom' && streak.customDays?.includes(dayOfWeek)) shouldGenerate = true;
 
       if (shouldGenerate) {
-        // Check if it already exists for this date and streakId
         const exists = currentGoals.some(g => g.streakId === streak.id && g.date === dateStr);
         if (!exists) {
           newGoals.push({
@@ -520,13 +548,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString()
     };
     setStreakGoals(prev => [...prev, newStreak]);
-    
-    // Immediately generate goals for this streak
-    setGoals(prevGoals => {
-      const generated = generateInstancesForStreak(newStreak, prevGoals);
-      return [...generated, ...prevGoals];
-    });
-  }, [generateInstancesForStreak]);
+  }, []);
 
   const updateStreakGoal = useCallback((id: string, updates: Partial<StreakGoal>) => {
     setStreakGoals(prev => prev.map(sg => sg.id === id ? { ...sg, ...updates } : sg));
@@ -534,7 +556,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteStreakGoal = useCallback((id: string) => {
     setStreakGoals(prev => prev.filter(sg => sg.id !== id));
-    // Optionally delete all related goals that are uncompleted in the future
     const todayStr = new Date().toISOString().split("T")[0];
     setGoals(prev => prev.filter(g => !(g.streakId === id && g.date >= todayStr && !g.completed)));
   }, []);
@@ -543,18 +564,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setGoals(prevGoals => {
       let newlyGenerated: Goal[] = [];
       streakGoals.forEach(sg => {
-        newlyGenerated = [...newlyGenerated, ...generateInstancesForStreak(sg, [...prevGoals, ...newlyGenerated])];
+        newlyGenerated = [...newlyGenerated, ...generateMissingStreakInstances(sg, [...prevGoals, ...newlyGenerated])];
       });
       if (newlyGenerated.length === 0) return prevGoals;
       return [...newlyGenerated, ...prevGoals];
     });
-  }, [streakGoals, generateInstancesForStreak]);
+  }, [streakGoals, generateMissingStreakInstances]);
 
-  // Run regeneration once on load
+  // Run regeneration on load and whenever streakGoals changes
   useEffect(() => {
     regenerateAllStreakGoals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once
+  }, [streakGoals, regenerateAllStreakGoals]);
 
   return (
     <AppContext.Provider value={{
@@ -563,8 +583,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateColumn, deleteColumn, setTheme, getAvatarColor, avatarColors: avatarColorMap,
       goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig,
       addGoal, updateGoal, deleteGoal, toggleGoal, addTemplate, deleteTemplate, setDayMetadata,
-      addStreakGoal, updateStreakGoal, deleteStreakGoal, regenerateAllStreakGoals,
+      addStreakGoal, updateStreakGoal, deleteStreakGoal, regenerateAllStreakGoals, generateMissingStreakInstances,
       setGroqApiKey, toggleAiFeature, updateCustomConfig,
+      userProfile, updateUserProfile
     }}>
       {children}
     </AppContext.Provider>
