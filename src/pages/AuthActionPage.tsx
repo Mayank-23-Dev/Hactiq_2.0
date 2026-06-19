@@ -1,4 +1,3 @@
-// src/pages/AuthActionPage.tsx
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router";
 import { 
@@ -8,6 +7,7 @@ import {
 } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { Loader2, CheckCircle2, AlertCircle, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AuthActionPage() {
   const [searchParams] = useSearchParams();
@@ -85,7 +85,8 @@ export default function AuthActionPage() {
 
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
-      setSuccess("Password reset successful. You can now login with your new password.");
+      toast.success("Password reset successful. Please login with your new password.");
+      navigate("/login");
     } catch (err: any) {
       setError(err.message || "Failed to reset password. The link may have expired.");
     } finally {

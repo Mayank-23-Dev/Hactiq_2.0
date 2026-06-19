@@ -13,6 +13,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./ui/t
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { navItems } from "../../config/navigation";
 import { callGroqAPI } from "../../lib/groq";
+import { useClickOutside } from "../../hooks/useClickOutside";
 
 interface SidebarInnerProps {
   isCollapsed: boolean;
@@ -232,6 +233,22 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
   const [isCoachLoading, setIsCoachLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const notifRef = useRef<HTMLDivElement>(null);
+  const coachRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(notifRef, () => {
+    if (notifOpen) setNotifOpen(false);
+  });
+
+  useClickOutside(coachRef, () => {
+    if (isCoachOpen) setIsCoachOpen(false);
+  });
+
+  useClickOutside(searchRef, () => {
+    if (searchOpen) setSearchOpen(false);
+  });
+
   useEffect(() => {
     localStorage.setItem("hactiq_coach_open", String(isCoachOpen));
   }, [isCoachOpen]);
@@ -406,7 +423,7 @@ Please ask something related to improving your habits or productivity.
           <Particles className="absolute inset-0 z-0 opacity-40 dark:opacity-20 pointer-events-none" />
           
           {/* Topbar */}
-          <header className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-3 border-b border-border bg-background/80 backdrop-blur shrink-0 relative z-10">
+          <header className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-3 border-b border-border bg-background/80 backdrop-blur shrink-0 relative z-40">
             {/* Hamburger button on mobile */}
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
@@ -420,7 +437,7 @@ Please ask something related to improving your habits or productivity.
             <div className="flex-1" />
 
             {/* Search */}
-            <div className="relative">
+            <div ref={searchRef} className="relative">
               {searchOpen ? (
                 <div className="flex items-center gap-2 border border-border rounded-lg px-3 py-1.5 bg-input-background">
                   <Search size={14} className="text-muted-foreground" />
@@ -435,7 +452,7 @@ Please ask something related to improving your habits or productivity.
             </div>
 
             {/* Notifications */}
-            <div className="relative">
+            <div ref={notifRef} className="relative">
               <button onClick={() => { setNotifOpen(!notifOpen); markAllActivitiesAsRead(); }} className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors relative cursor-pointer">
                 <Bell size={16} />
                 {unreadCount > 0 && (
@@ -497,7 +514,7 @@ Please ask something related to improving your habits or productivity.
 
       {/* Sliding Hactiq Coach Panel */}
       {isCoachOpen && (
-        <div className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-card border-l border-border backdrop-blur-md shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
+        <div ref={coachRef} className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-card border-l border-border backdrop-blur-md shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
           {/* Header */}
           <div className="p-4 border-b border-border flex items-center justify-between bg-muted/35">
             <div className="flex items-center gap-2">
