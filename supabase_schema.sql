@@ -201,6 +201,7 @@ CREATE OR REPLACE FUNCTION get_current_user_id()
 RETURNS TEXT AS $$
 BEGIN
   RETURN COALESCE(
+    nullif(auth.jwt() ->> 'sub', ''),
     current_setting('request.headers', true)::json->>'x-user-id',
     ''
   );
@@ -305,3 +306,14 @@ CREATE INDEX IF NOT EXISTS idx_streak_goals_user ON streak_goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goal_templates_user ON goal_templates(user_id);
 CREATE INDEX IF NOT EXISTS idx_goal_template_items_template ON goal_template_items(template_id);
 CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id);
+
+-- Enable Supabase Realtime Replication for the user data tables
+ALTER PUBLICATION supabase_realtime ADD TABLE boards;
+ALTER PUBLICATION supabase_realtime ADD TABLE columns;
+ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
+ALTER PUBLICATION supabase_realtime ADD TABLE goals;
+ALTER PUBLICATION supabase_realtime ADD TABLE streak_goals;
+ALTER PUBLICATION supabase_realtime ADD TABLE goal_templates;
+ALTER PUBLICATION supabase_realtime ADD TABLE goal_template_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE day_metadata;
+ALTER PUBLICATION supabase_realtime ADD TABLE activities;

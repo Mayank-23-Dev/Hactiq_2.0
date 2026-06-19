@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Disallow: /auth/action
+Disallow: /board/
+Disallow: /settings
+Disallow: /activities
+Disallow: /boards
+Disallow: /today
+Disallow: /goal-board
+Disallow: /streak-goals
+Disallow: /yesterday
+Disallow: /calendar
+Disallow: /stats
+Disallow: /archive
+Disallow: /templates
+Disallow: /goals
+Disallow: /all-goals
+
+Sitemap: https://www.hactiq.com/sitemap.xml

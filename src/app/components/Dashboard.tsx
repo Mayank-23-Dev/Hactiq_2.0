@@ -12,7 +12,7 @@ const COLORS = [
 ];
 
 export function Dashboard() {
-  const { boards, columns, tasks, createBoard, deleteBoard, userProfile } = useApp();
+  const { boards, columns, tasks, createBoard, deleteBoard, userProfile, isLoadingData } = useApp();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -73,69 +73,94 @@ export function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {boards.map(board => {
-                const count = getTaskCount(board.id);
-                const boardCols = columns.filter(c => c.boardId === board.id);
-                const done = tasks.filter(t => t.boardId === board.id && boardCols.find(c => c.id === t.columnId)?.title === "Done").length;
-                return (
-                  <div
-                    key={board.id}
-                    onClick={() => navigate(`/board/${board.id}`)}
-                    className="group relative bg-card/70 border border-border backdrop-blur-md rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:border-primary/30 transition-all duration-250 flex flex-col justify-between min-h-[180px] shadow-xl"
-                  >
-                    {/* Top line with Accent color */}
-                    <div className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl" style={{ backgroundColor: board.color }} />
-
-                    <div className="space-y-3 mt-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-base font-bold text-foreground tracking-tight group-hover:text-primary transition-colors leading-snug">
-                          {board.name}
-                        </h4>
-                        <button
-                          onClick={(e) => handleDelete(e, board.id, board.name)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+              {isLoadingData ? (
+                <>
+                  {[1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className="bg-card/70 border border-border backdrop-blur-md rounded-2xl p-6 min-h-[180px] flex flex-col justify-between animate-pulse shadow-xl"
+                    >
+                      <div className="space-y-3 mt-2">
+                        <div className="h-5 bg-muted rounded w-2/3" />
+                        <div className="h-4 bg-muted rounded w-5/6" />
                       </div>
-
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {board.description || "No description provided."}
-                      </p>
+                      <div className="space-y-2 mt-6">
+                        <div className="h-1 bg-muted rounded" />
+                        <div className="flex justify-between pt-3 border-t border-border">
+                          <div className="h-3 bg-muted rounded w-1/3" />
+                          <div className="h-3 bg-muted rounded w-1/4" />
+                        </div>
+                      </div>
                     </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {boards.map(board => {
+                    const count = getTaskCount(board.id);
+                    const boardCols = columns.filter(c => c.boardId === board.id);
+                    const done = tasks.filter(t => t.boardId === board.id && boardCols.find(c => c.id === t.columnId)?.title === "Done").length;
+                    return (
+                      <div
+                        key={board.id}
+                        onClick={() => navigate(`/board/${board.id}`)}
+                        className="group relative bg-card/70 border border-border backdrop-blur-md rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:border-primary/30 transition-all duration-250 flex flex-col justify-between min-h-[180px] shadow-xl"
+                      >
+                        {/* Top line with Accent color */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl" style={{ backgroundColor: board.color }} />
 
-                    {/* Footer & Progress details */}
-                    <div className="space-y-4 mt-6">
-                      {count > 0 && (
-                        <div className="space-y-1">
-                          <div className="h-1 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${(done / count) * 100}%`, backgroundColor: board.color }} />
+                        <div className="space-y-3 mt-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-base font-bold text-foreground tracking-tight group-hover:text-primary transition-colors leading-snug">
+                              {board.name}
+                            </h4>
+                            <button
+                              onClick={(e) => handleDelete(e, board.id, board.name)}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
-                          <p className="text-[10px] text-muted-foreground text-right font-medium">
-                            {done}/{count} completed
+
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {board.description || "No description provided."}
                           </p>
                         </div>
-                      )}
 
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border pt-3">
-                        <span className="flex items-center gap-1.5"><CheckSquare size={13} className="text-primary" /> {count} tasks</span>
-                        <span className="flex items-center gap-1.5"><Calendar size={13} /> {board.lastModified}</span>
+                        {/* Footer & Progress details */}
+                        <div className="space-y-4 mt-6">
+                          {count > 0 && (
+                            <div className="space-y-1">
+                              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{ width: `${(done / count) * 100}%`, backgroundColor: board.color }} />
+                              </div>
+                              <p className="text-[10px] text-muted-foreground text-right font-medium">
+                                {done}/{count} completed
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border pt-3">
+                            <span className="flex items-center gap-1.5"><CheckSquare size={13} className="text-primary" /> {count} tasks</span>
+                            <span className="flex items-center gap-1.5"><Calendar size={13} /> {board.lastModified}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
 
-              {/* Create new board block */}
-              <button
-                onClick={() => setShowCreate(true)}
-                className="border border-dashed border-border hover:border-primary/50 hover:bg-accent/50 rounded-2xl p-6 text-muted-foreground hover:text-foreground transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center group-hover:border-primary/30 transition-all">
-                  <Plus size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-                <span className="text-xs font-semibold">Create new board</span>
-              </button>
+                  {/* Create new board block */}
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="border border-dashed border-border hover:border-primary/50 hover:bg-accent/50 rounded-2xl p-6 text-muted-foreground hover:text-foreground transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center group-hover:border-primary/30 transition-all">
+                      <Plus size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <span className="text-xs font-semibold">Create new board</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 

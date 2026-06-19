@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { format, subDays, eachDayOfInterval } from "date-fns";
 import { supabase } from "../lib/supabase";
 import { auth } from "../lib/firebase";
+import { useRealtimeTable } from "../hooks/useRealtimeTable";
 
 export type Priority = string;
 
@@ -356,6 +357,7 @@ export interface AppContextValue extends AppState {
   // Activity Logging System Actions
   addActivity: (activity: Omit<Activity, 'id' | 'timestamp' | 'userId' | 'read'>) => void;
   markAllActivitiesAsRead: () => void;
+  isLoadingData: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -379,21 +381,239 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const [boards, setBoards] = useState<Board[]>(() => safeParse("gt_boards", initialBoards));
-  const [columns, setColumns] = useState<Column[]>(() => safeParse("gt_columns", initialColumns));
-  const [tasks, setTasks] = useState<Task[]>(() => safeParse("gt_tasks", initialTasks));
-  const [activity, setActivity] = useState<ActivityItem[]>(() => safeParse("gt_activity", initialActivity));
-  const [goals, setGoals] = useState<Goal[]>(() => safeParse("gt_goals", initialGoals));
-  const [streakGoals, setStreakGoals] = useState<StreakGoal[]>(() => safeParse("gt_streak_goals", []));
+  const { user, isAuthenticated, userProfile, updateUserProfile, uid } = useAuth();
+
+  const { data: boards, setData: setBoards, isLoading: isLoadingBoards } = useRealtimeTable<Board>(
+    "boards",
+    uid,
+    {
+      guestData: safeParse("gt_boards", initialBoards),
+      mapRow: (b: any) => ({
+        id: b.id,
+        name: b.name,
+        description: b.description || "",
+        color: b.color || "#6366f1",
+        lastModified: b.last_modified
+      })
+    }
+  );
+
+  const { data: columns, setData: setColumns, isLoading: isLoadingColumns } = useRealtimeTable<Column>(
+    "columns",
+    uid,
+    {
+      filterField: null, // Subscribe to columns without client-side filter (secured via database RLS)
+      guestData: safeParse("gt_columns", initialColumns),
+      mapRow: (c: any) => ({
+        id: c.id,
+        title: c.title,
+        boardId: c.board_id
+      })
+    }
+  );
+
+  const { data: tasks, setData: setTasks, isLoading: isLoadingTasks } = useRealtimeTable<Task>(
+    "tasks",
+    uid,
+    {
+      filterField: null, // Subscribe to tasks without client-side filter (secured via database RLS)
+      guestData: safeParse("gt_tasks", initialTasks),
+      mapRow: (t: any) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description || "",
+        priority: t.priority || "medium",
+        dueDate: t.due_date || "",
+        assignees: t.assignees || [],
+        labels: t.labels || [],
+        subtasks: t.subtasks || [],
+        comments: t.comments || 0,
+        attachments: t.attachments || 0,
+        columnId: t.column_id,
+        boardId: t.board_id
+      })
+    }
+  );
+
+  const { data: goals, setData: setGoals, isLoading: isLoadingGoals } = useRealtimeTable<Goal>(
+    "goals",
+    uid,
+    {
+      orderByField: "created_at",
+      orderDescending: true,
+      guestData: safeParse("gt_goals", initialGoals),
+      mapRow: (g: any) => ({
+        id: g.id,
+        title: g.title,
+        category: g.category || "Other",
+        priority: g.priority || "medium",
+        completed: g.completed,
+        date: g.date,
+        notes: g.notes || "",
+        streakId: g.streak_id || undefined,
+        status: g.status || "todo"
+      })
+    }
+  );
+
+  const { data: streakGoals, setData: setStreakGoals, isLoading: isLoadingStreakGoals } = useRealtimeTable<StreakGoal>(
+    "streak_goals",
+    uid,
+    {
+      guestData: safeParse("gt_streak_goals", []),
+      mapRow: (sg: any) => ({
+        id: sg.id,
+        title: sg.title,
+        category: sg.category || "Other",
+        priority: sg.priority || "medium",
+        notes: sg.notes || "",
+        startDate: sg.start_date,
+        endDate: sg.end_date,
+        frequency: sg.frequency as any,
+        customDays: sg.custom_days || [],
+        active: sg.active,
+        createdAt: sg.created_at
+      })
+    }
+  );
+
+  // Goal Templates are split into templates and nested template items
+  const { data: rawTemplates, isLoading: isLoadingTemplates } = useRealtimeTable<any>(
+    "goal_templates",
+    uid,
+    {
+      guestData: safeParse("gt_templates", initialTemplates),
+      mapRow: (t: any) => ({
+        id: t.id,
+        user_id: t.user_id,
+        name: t.name,
+        description: t.description || ""
+      })
+    }
+  );
+
+  const { data: templateItems, isLoading: isLoadingTemplateItems } = useRealtimeTable<any>(
+    "goal_template_items",
+    uid,
+    {
+      filterField: null,
+      guestData: [],
+      mapRow: (item: any) => ({
+        id: item.id,
+        template_id: item.template_id,
+        title: item.title,
+        category: item.category || "Other",
+        priority: item.priority || "medium",
+        notes: item.notes || ""
+      })
+    }
+  );
+
   const [templates, setTemplates] = useState<GoalTemplate[]>(() => safeParse("gt_templates", initialTemplates));
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setTemplates(safeParse("gt_templates", initialTemplates));
+      return;
+    }
+    setTemplates(
+      rawTemplates.map((t) => ({
+        ...t,
+        items: templateItems.filter((item) => item.template_id === t.id)
+      }))
+    );
+  }, [rawTemplates, templateItems, isAuthenticated]);
+
+  // Day Metadata mapping
+  interface DayMetadataRow {
+    id: string; // date
+    mood?: string;
+    energy?: string;
+  }
+
+  const { data: metadataList, isLoading: isLoadingMetadata } = useRealtimeTable<DayMetadataRow>(
+    "day_metadata",
+    uid,
+    {
+      guestData: [],
+      mapRow: (m: any) => ({
+        id: m.date,
+        mood: m.mood || undefined,
+        energy: m.energy || undefined
+      })
+    }
+  );
+
   const [dailyMetadata, setDailyMetadata] = useState<Record<string, DayMetadata>>(() => safeParse("gt_metadata", initialMetadata));
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setDailyMetadata(safeParse("gt_metadata", initialMetadata));
+      return;
+    }
+    const metaRecord: Record<string, DayMetadata> = {};
+    metadataList.forEach((m) => {
+      metaRecord[m.id] = {
+        mood: m.mood,
+        energy: m.energy
+      };
+    });
+    setDailyMetadata(metaRecord);
+  }, [metadataList, isAuthenticated]);
+
+  // Activities & Recent Activity log
+  const { data: activities, setData: setActivities, isLoading: isLoadingActivities } = useRealtimeTable<Activity>(
+    "activities",
+    uid,
+    {
+      orderByField: "timestamp",
+      orderDescending: true,
+      guestData: safeParse("gt_activities", []),
+      mapRow: (act: any) => ({
+        id: act.id,
+        userId: act.user_id,
+        type: act.type as any,
+        message: act.message,
+        boardName: act.board_name || undefined,
+        goalTitle: act.goal_title || undefined,
+        timestamp: act.timestamp,
+        read: act.read
+      })
+    }
+  );
+
+  const [activity, setActivity] = useState<ActivityItem[]>(() => safeParse("gt_activity", initialActivity));
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setActivity(safeParse("gt_activity", initialActivity));
+      return;
+    }
+    setActivity(
+      activities.slice(0, 10).map((act) => ({
+        id: act.id,
+        text: act.message,
+        time: "Synced",
+        boardName: act.board_name || ""
+      }))
+    );
+  }, [activities, isAuthenticated]);
+
+  // User preferences (configs, themes, Groq Key)
+  const { data: userPreferencesList, isLoading: isLoadingPrefs } = useRealtimeTable<any>(
+    "user_preferences",
+    uid,
+    {
+      filterField: "id",
+      guestData: []
+    }
+  );
+
   const [groqApiKey, setGroqApiKeyInternal] = useState<string>(() => {
     const fromLocal = safeParse("gt_groq_api_key", "");
     return fromLocal || import.meta.env.VITE_GROQ_API_KEY || "";
   });
   const [customConfig, setCustomConfig] = useState<CustomConfig>(() => safeParse("gt_custom_config", initialCustomConfig));
-  const { user, isAuthenticated, userProfile, updateUserProfile } = useAuth();
-  const [activities, setActivities] = useState<Activity[]>(() => safeParse("gt_activities", []));
 
   const [aiFeaturesConfig, setAiFeaturesConfig] = useState<Record<string, boolean>>(() => safeParse("gt_ai_features", {
     naturalLanguageEntry: true,
@@ -407,6 +627,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     goalDecomposition: true,
     predictiveAlert: true
   }));
+
+  useEffect(() => {
+    if (!isAuthenticated || userPreferencesList.length === 0) {
+      if (!isAuthenticated) {
+        setGroqApiKeyInternal(safeParse("gt_groq_api_key", ""));
+        setCustomConfig(safeParse("gt_custom_config", initialCustomConfig));
+        setAiFeaturesConfig(safeParse("gt_ai_features", {
+          naturalLanguageEntry: true,
+          autoCategorization: true,
+          dailyBriefing: true,
+          smartRescheduling: true,
+          autoReflection: true,
+          aiInsights: true,
+          smartTemplates: true,
+          voiceEntry: true,
+          goalDecomposition: true,
+          predictiveAlert: true
+        }));
+      }
+      return;
+    }
+
+    const prefs = userPreferencesList[0];
+    if (prefs) {
+      if (prefs.groq_api_key) {
+        setGroqApiKeyInternal(prefs.groq_api_key);
+      }
+      if (prefs.custom_config && Object.keys(prefs.custom_config).length > 0) {
+        setCustomConfig({ ...initialCustomConfig, ...prefs.custom_config });
+      }
+      if (prefs.ai_features && Object.keys(prefs.ai_features).length > 0) {
+        setAiFeaturesConfig(prev => ({ ...prev, ...prefs.ai_features }));
+      }
+    }
+  }, [userPreferencesList, isAuthenticated]);
+
+  // Derived overall loading state
+  const isLoadingData =
+    isAuthenticated && (
+      isLoadingBoards ||
+      isLoadingColumns ||
+      isLoadingTasks ||
+      isLoadingGoals ||
+      isLoadingStreakGoals ||
+      isLoadingTemplates ||
+      isLoadingTemplateItems ||
+      isLoadingMetadata ||
+      isLoadingActivities ||
+      isLoadingPrefs
+    );
 
   // Local storage synchronization for offline / guest use
   useEffect(() => {
@@ -425,209 +695,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("gt_activities", JSON.stringify(activities));
     }
   }, [boards, columns, tasks, activity, goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig, activities, isAuthenticated]);
-
-  // Load from Supabase on Login / Auth changes
-  useEffect(() => {
-    if (!isAuthenticated) {
-      // Revert to local guest data
-      setBoards(safeParse("gt_boards", initialBoards));
-      setColumns(safeParse("gt_columns", initialColumns));
-      setTasks(safeParse("gt_tasks", initialTasks));
-      setActivity(safeParse("gt_activity", initialActivity));
-      setGoals(safeParse("gt_goals", initialGoals));
-      setStreakGoals(safeParse("gt_streak_goals", []));
-      setTemplates(safeParse("gt_templates", initialTemplates));
-      setDailyMetadata(safeParse("gt_metadata", initialMetadata));
-      setGroqApiKeyInternal(safeParse("gt_groq_api_key", import.meta.env.VITE_GROQ_API_KEY || ""));
-      setCustomConfig(safeParse("gt_custom_config", initialCustomConfig));
-      setActivities(safeParse("gt_activities", []));
-      return;
-    }
-
-    const loadData = async () => {
-      try {
-        const userId = auth.currentUser?.uid;
-        if (!userId) return;
-
-        // Fetch preferences, boards, goals, streaks, templates, day metadata, and activities in parallel
-        const [
-          prefsResult,
-          boardsResult,
-          goalsResult,
-          streakGoalsResult,
-          templatesResult,
-          metadataResult,
-          activitiesResult
-        ] = await Promise.all([
-          supabase.from("user_preferences").select("*").eq("id", userId).single(),
-          supabase.from("boards").select("*").eq("user_id", userId),
-          supabase.from("goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
-          supabase.from("streak_goals").select("*").eq("user_id", userId),
-          supabase.from("goal_templates").select("*, goal_template_items(*)").eq("user_id", userId),
-          supabase.from("day_metadata").select("*").eq("user_id", userId),
-          supabase.from("activities").select("*").eq("user_id", userId).order("timestamp", { ascending: false }).limit(100)
-        ]);
-
-        // 1. Map user preferences
-        const prefs = prefsResult.data;
-        if (prefs) {
-          if (prefs.groq_api_key) {
-            setGroqApiKeyInternal(prefs.groq_api_key);
-          }
-          if (prefs.custom_config && Object.keys(prefs.custom_config).length > 0) {
-            setCustomConfig({ ...initialCustomConfig, ...prefs.custom_config });
-          }
-          if (prefs.ai_features && Object.keys(prefs.ai_features).length > 0) {
-            setAiFeaturesConfig(prev => ({ ...prev, ...prefs.ai_features }));
-          }
-        }
-
-        // 2. Map boards
-        const fetchedBoards = boardsResult.data;
-        if (fetchedBoards) {
-          const mappedBoards = fetchedBoards.map(b => ({
-            id: b.id,
-            name: b.name,
-            description: b.description || "",
-            color: b.color || "#6366f1",
-            lastModified: b.last_modified
-          }));
-          setBoards(mappedBoards);
-        }
-
-        // 3. Fetch columns & tasks in parallel using the board IDs
-        if (fetchedBoards && fetchedBoards.length > 0) {
-          const boardIds = fetchedBoards.map(b => b.id);
-          const [columnsResult, tasksResult] = await Promise.all([
-            supabase.from("columns").select("*").in("board_id", boardIds),
-            supabase.from("tasks").select("*").in("board_id", boardIds)
-          ]);
-          
-          const fetchedColumns = columnsResult.data;
-          if (fetchedColumns) {
-            setColumns(fetchedColumns.map(c => ({
-              id: c.id,
-              title: c.title,
-              boardId: c.board_id
-            })));
-          }
-
-          const fetchedTasks = tasksResult.data;
-          if (fetchedTasks) {
-            setTasks(fetchedTasks.map(t => ({
-              id: t.id,
-              title: t.title,
-              description: t.description || "",
-              priority: t.priority || "medium",
-              dueDate: t.due_date || "",
-              assignees: t.assignees || [],
-              labels: t.labels || [],
-              subtasks: t.subtasks || [],
-              comments: t.comments || 0,
-              attachments: t.attachments || 0,
-              columnId: t.column_id,
-              boardId: t.board_id
-            })));
-          }
-        } else {
-          setColumns([]);
-          setTasks([]);
-        }
-
-        // 4. Map goals
-        const fetchedGoals = goalsResult.data;
-        if (fetchedGoals) {
-          setGoals(fetchedGoals.map(g => ({
-            id: g.id,
-            title: g.title,
-            category: g.category || "Other",
-            priority: g.priority || "medium",
-            completed: g.completed,
-            date: g.date,
-            notes: g.notes || "",
-            streakId: g.streak_id || undefined,
-            status: g.status || "todo"
-          })));
-        }
-
-        // 5. Map streak goals
-        const fetchedStreakGoals = streakGoalsResult.data;
-        if (fetchedStreakGoals) {
-          setStreakGoals(fetchedStreakGoals.map(sg => ({
-            id: sg.id,
-            title: sg.title,
-            category: sg.category || "Other",
-            priority: sg.priority || "medium",
-            notes: sg.notes || "",
-            startDate: sg.start_date,
-            endDate: sg.end_date,
-            frequency: sg.frequency as any,
-            customDays: sg.custom_days || [],
-            active: sg.active,
-            createdAt: sg.created_at
-          })));
-        }
-
-        // 6. Map templates
-        const fetchedTemplates = templatesResult.data;
-        if (fetchedTemplates) {
-          setTemplates(fetchedTemplates.map(t => ({
-            id: t.id,
-            name: t.name,
-            description: t.description || "",
-            items: (t.goal_template_items || []).map((item: any) => ({
-              id: item.id,
-              template_id: item.template_id,
-              title: item.title,
-              category: item.category || "Other",
-              priority: item.priority || "medium",
-              notes: item.notes || ""
-            }))
-          })));
-        }
-
-        // 7. Map day metadata
-        const fetchedMetadata = metadataResult.data;
-        if (fetchedMetadata) {
-          const metaRecord: Record<string, DayMetadata> = {};
-          fetchedMetadata.forEach(m => {
-            metaRecord[m.date] = {
-              mood: m.mood || undefined,
-              energy: m.energy || undefined
-            };
-          });
-          setDailyMetadata(metaRecord);
-        }
-
-        // 8. Map activities feed
-        const fetchedActivities = activitiesResult.data;
-        if (fetchedActivities) {
-          setActivities(fetchedActivities.map(act => ({
-            id: act.id,
-            userId: act.user_id,
-            type: act.type as any,
-            message: act.message,
-            boardName: act.board_name || undefined,
-            goalTitle: act.goal_title || undefined,
-            timestamp: act.timestamp,
-            read: act.read
-          })));
-          
-          setActivity(fetchedActivities.slice(0, 10).map(act => ({
-            id: act.id,
-            text: act.message,
-            time: "Synced",
-            boardName: act.board_name || ""
-          })));
-        }
-
-      } catch (err) {
-        console.error("Error loading user data from Supabase:", err);
-      }
-    };
-
-    loadData();
-  }, [isAuthenticated]);
   
   const { theme: nextTheme, setTheme: setNextTheme } = useTheme();
 
@@ -1424,7 +1491,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addStreakGoal, updateStreakGoal, deleteStreakGoal, regenerateAllStreakGoals, generateMissingStreakInstances,
       setGroqApiKey, toggleAiFeature, updateCustomConfig,
       userProfile, updateUserProfile,
-      activities, addActivity, markAllActivitiesAsRead
+      activities, addActivity, markAllActivitiesAsRead,
+      isLoadingData
     }}>
       {children}
     </AppContext.Provider>

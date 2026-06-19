@@ -11,7 +11,7 @@ const COLORS = [
 ];
 
 export default function WorkspacesPage() {
-  const { boards, columns, tasks, createBoard, deleteBoard } = useApp();
+  const { boards, columns, tasks, createBoard, deleteBoard, isLoadingData } = useApp();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -58,61 +58,86 @@ export default function WorkspacesPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {boards.map(board => {
-            const count = getTaskCount(board.id);
-            const boardCols = columns.filter(c => c.boardId === board.id);
-            const done = tasks.filter(t => t.boardId === board.id && boardCols.find(c => c.id === t.columnId)?.title === "Done").length;
-            return (
-              <div
-                key={board.id}
-                onClick={() => navigate(`/board/${board.id}`)}
-                className="group relative bg-card border border-border rounded-xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-150 flex flex-col justify-between min-h-[180px]"
-              >
-                <div>
-                  {/* Color bar */}
-                  <div className="w-full h-1.5 rounded-full mb-4" style={{ backgroundColor: board.color }} />
-
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-card-foreground text-base leading-snug group-hover:text-primary transition-colors truncate">{board.name}</h4>
-                    <button
-                      onClick={(e) => handleDelete(e, board.id, board.name)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+          {isLoadingData ? (
+            <>
+              {[1, 2, 3, 4].map(i => (
+                <div
+                  key={i}
+                  className="bg-card border border-border rounded-xl p-5 min-h-[180px] flex flex-col justify-between animate-pulse"
+                >
+                  <div>
+                    <div className="w-full h-1.5 rounded-full mb-4 bg-muted" />
+                    <div className="h-5 bg-muted rounded w-2/3 mb-3" />
+                    <div className="h-4 bg-muted rounded w-5/6" />
                   </div>
-
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{board.description || "No description provided."}</p>
-                </div>
-
-                <div>
-                  {/* Progress */}
-                  {count > 0 && (
-                    <div className="mb-4">
-                      <div className="h-1 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${(done / count) * 100}%`, backgroundColor: board.color }} />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1.5">{done}/{count} completed</p>
+                  <div className="space-y-2 mt-4 pt-3 border-t border-border/55">
+                    <div className="flex gap-3">
+                      <div className="h-3 bg-muted rounded w-1/3" />
+                      <div className="h-3 bg-muted rounded w-1/4" />
                     </div>
-                  )}
-
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground border-t border-border/55 pt-3">
-                    <span className="flex items-center gap-1"><CheckSquare size={12} /> {count} tasks</span>
-                    <span className="flex items-center gap-1"><Calendar size={12} /> {board.lastModified}</span>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </>
+          ) : (
+            <>
+              {boards.map(board => {
+                const count = getTaskCount(board.id);
+                const boardCols = columns.filter(c => c.boardId === board.id);
+                const done = tasks.filter(t => t.boardId === board.id && boardCols.find(c => c.id === t.columnId)?.title === "Done").length;
+                return (
+                  <div
+                    key={board.id}
+                    onClick={() => navigate(`/board/${board.id}`)}
+                    className="group relative bg-card border border-border rounded-xl p-5 cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-150 flex flex-col justify-between min-h-[180px]"
+                  >
+                    <div>
+                      {/* Color bar */}
+                      <div className="w-full h-1.5 rounded-full mb-4" style={{ backgroundColor: board.color }} />
 
-          {/* Create new card */}
-          <button
-            onClick={() => setShowCreate(true)}
-            className="border-2 border-dashed border-border bg-card/30 rounded-xl p-5 text-muted-foreground hover:border-primary hover:text-primary transition-colors flex flex-col items-center justify-center gap-2.5 min-h-[180px]"
-          >
-            <Plus size={24} />
-            <span className="text-sm font-semibold">Create new workspace</span>
-          </button>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-card-foreground text-base leading-snug group-hover:text-primary transition-colors truncate">{board.name}</h4>
+                        <button
+                          onClick={(e) => handleDelete(e, board.id, board.name)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{board.description || "No description provided."}</p>
+                    </div>
+
+                    <div>
+                      {/* Progress */}
+                      {count > 0 && (
+                        <div className="mb-4">
+                          <div className="h-1 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${(done / count) * 100}%`, backgroundColor: board.color }} />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1.5">{done}/{count} completed</p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground border-t border-border/55 pt-3">
+                        <span className="flex items-center gap-1"><CheckSquare size={12} /> {count} tasks</span>
+                        <span className="flex items-center gap-1"><Calendar size={12} /> {board.lastModified}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Create new card */}
+              <button
+                onClick={() => setShowCreate(true)}
+                className="border-2 border-dashed border-border bg-card/30 rounded-xl p-5 text-muted-foreground hover:border-primary hover:text-primary transition-colors flex flex-col items-center justify-center gap-2.5 min-h-[180px]"
+              >
+                <Plus size={24} />
+                <span className="text-sm font-semibold">Create new workspace</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

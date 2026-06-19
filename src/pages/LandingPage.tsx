@@ -170,7 +170,7 @@ export default function LandingPage() {
 
         {/* Display Typography */}
         <h1 className="font-display text-5xl md:text-8xl font-extrabold tracking-tighter text-black dark:text-white max-w-5xl leading-[0.95] mb-8">
-          The Monochrome Workspace for <span className="text-transparent bg-clip-text bg-gradient-to-b from-neutral-800 to-black dark:from-white dark:via-neutral-100 dark:to-neutral-600">High-Fidelity</span> Goals.
+          The Monochrome <span className="text-transparent bg-clip-text bg-gradient-to-b from-neutral-800 to-black dark:from-white dark:via-neutral-100 dark:to-neutral-600">Goal Tracker App</span> for High-Fidelity Goals.
         </h1>
 
         {/* Paragraph copy */}
@@ -182,7 +182,7 @@ export default function LandingPage() {
         <div className="flex flex-col sm:flex-row items-center gap-4 mb-24">
           <button 
             onClick={() => navigate("/register")}
-            className="w-full sm:w-auto py-3.5 px-8 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-black text-sm font-bold uppercase tracking-widest rounded-lg shadow-xl hover:shadow-black/10 dark:hover:shadow-white/10 transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
+            className="w-full sm:w-auto py-3.5 px-8 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-black text-sm font-bold uppercase tracking-widest rounded-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Initialize Board</span>
             <ArrowRight className="w-4 h-4" />
@@ -576,6 +576,215 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* 6.1. SEO Context & Philosophy Section */}
+      <section className="relative max-w-7xl mx-auto px-6 py-24 z-10 border-t border-black/5 dark:border-white/5">
+        <div className="mb-16">
+          <p className="text-xs uppercase tracking-[0.25em] font-mono text-neutral-500 mb-2">Cognitive Architecture</p>
+          <h2 className="font-display text-3xl md:text-5xl font-extrabold tracking-tight mb-6 text-black dark:text-white leading-tight">
+            Designing a Distraction-Free System:<br />The Hactiq Philosophy
+          </h2>
+          <div className="h-px w-20 bg-black/20 dark:bg-white/20 mb-8" />
+          <p className="text-base md:text-lg text-neutral-600 dark:text-neutral-400 font-light leading-relaxed max-w-3xl">
+            In an era dominated by notifications, gamified badges, and bright color palettes designed to keep you scrolling, productivity has lost its core purpose. True focus isn't about collecting streak points or setting arbitrary deadlines in a bloated list; it’s about clear, spatial alignment with your objectives. Hactiq was built to address this overhead, serving as a specialized <strong className="text-black dark:text-white font-medium">web based goal tracker</strong> and <strong className="text-black dark:text-white font-medium">workflow management tool</strong> designed for high-fidelity execution.
+          </p>
+        </div>
+
+        {/* Comparison Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+          {/* Card 1: The Problem */}
+          <div className="group border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/40 p-8 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-black/15 dark:hover:border-white/15 hover:bg-neutral-100/30 dark:hover:bg-neutral-900/10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-neutral-400 dark:text-neutral-500 uppercase mb-4">01 / THE OVERHEAD</p>
+              <h3 className="text-xl font-bold mb-4 text-black dark:text-white">Why Generic To-Do Lists Fail</h3>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed mb-4">
+                Most traditional to-do list applications fail because they present tasks in a single, unstructured list. This approach creates cognitive friction: a high-priority career goal sits right next to a trivial chore, leading to choice fatigue and procrastination.
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+                Without visual hierarchy or a clear progression system, users find themselves overwhelmed by the sheer density of their tasks, leading to lists that are simply abandoned.
+              </p>
+            </div>
+            <div className="mt-8 text-[9px] font-mono text-neutral-400 dark:text-neutral-500">COGNITIVE_FRICTION: ACTIVE</div>
+          </div>
+
+          {/* Card 2: The Solution */}
+          <div className="group border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/40 p-8 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:border-black/15 dark:hover:border-white/15 hover:bg-neutral-100/30 dark:hover:bg-neutral-900/10">
+            <div>
+              <p className="text-[10px] font-mono tracking-widest text-neutral-400 dark:text-neutral-500 uppercase mb-4">02 / THE ARCHITECTURE</p>
+              <h3 className="text-xl font-bold mb-4 text-black dark:text-white">The Kanban Goal Tracker</h3>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed mb-4">
+                Hactiq solves this by functioning as a <strong className="text-black dark:text-white font-medium">goal tracker with kanban board</strong> layout, allowing you to group objectives by workflow stage. This <strong className="text-black dark:text-white font-medium">visual goal tracker</strong> design makes it simple to move goals from <em>Backlog</em> to <em>In Progress</em>, and finally to <em>Completed</em>.
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+                Because it is a hybrid <strong className="text-black dark:text-white font-medium">habit and goal tracker</strong>, you can manage daily routines alongside milestones, making Hactiq the ideal <strong className="text-black dark:text-white font-medium">goal tracker no signup required</strong> for users who want to start instantly in our sandbox.
+              </p>
+            </div>
+            <div className="mt-8 text-[9px] font-mono text-neutral-400 dark:text-neutral-500">PERSISTENCE: CLOUD_SECURE</div>
+          </div>
+        </div>
+
+        {/* Feature blocks (Key Capabilities) */}
+        <div className="border border-black/5 dark:border-white/5 bg-neutral-50/30 dark:bg-neutral-950/20 p-8 rounded-2xl mb-16">
+          <div className="mb-8">
+            <p className="text-[10px] font-mono tracking-widest text-neutral-400 dark:text-neutral-500 uppercase mb-2">SYSTEM PARAMETERS</p>
+            <h3 className="text-xl font-bold text-black dark:text-white">Key Capabilities Built for Execution</h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="p-6 border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/40 rounded-xl hover:border-black/10 dark:hover:border-white/10 transition-colors">
+              <h4 className="text-sm font-bold text-black dark:text-white mb-2">Customizable Kanban Boards</h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+                Segment your projects and workflows using clean, horizontal lanes. Drag and drop goals to track progress visually.
+              </p>
+            </div>
+            <div className="p-6 border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/40 rounded-xl hover:border-black/10 dark:hover:border-white/10 transition-colors">
+              <h4 className="text-sm font-bold text-black dark:text-white mb-2">Goal Templates</h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+                Skip the blank page syndrome. Seed starter templates like "Daily Essentials", "Quick Wins", or "Focus Blocks" to structure your day immediately.
+              </p>
+            </div>
+            <div className="p-6 border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/40 rounded-xl hover:border-black/10 dark:hover:border-white/10 transition-colors">
+              <h4 className="text-sm font-bold text-black dark:text-white mb-2">Category &amp; Priority Tagging</h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+                Classify goals (Work, Health, Personal, Finance, Education) and set priority levels (High, Medium, Low) to keep your focus where it belongs.
+              </p>
+            </div>
+            <div className="p-6 border border-black/5 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/40 rounded-xl hover:border-black/10 dark:hover:border-white/10 transition-colors">
+              <h4 className="text-sm font-bold text-black dark:text-white mb-2">Distraction-Free Environment</h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+                Built entirely on a high-contrast monochrome design system, Hactiq aligns with your natural cognitive focus, helping you maintain momentum without colorful distractions.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Conclusion / Summary */}
+        <div className="border border-black/5 dark:border-white/5 bg-neutral-50/30 dark:bg-neutral-950/20 p-8 rounded-2xl flex flex-col md:flex-row gap-8 transition-all hover:border-black/10 dark:hover:border-white/10">
+          <div className="flex-shrink-0 md:w-48">
+            <p className="text-[10px] font-mono tracking-widest text-neutral-400 dark:text-neutral-500 uppercase mb-2">SUMMARY</p>
+            <h3 className="text-lg font-bold text-black dark:text-white leading-tight">Clarity &amp; Execution</h3>
+          </div>
+          <div className="text-neutral-600 dark:text-neutral-400 font-light text-sm leading-relaxed space-y-4 flex-1">
+            <p>
+              Hactiq functions as a flexible <strong className="text-black dark:text-white font-medium">goal tracker for work and personal life</strong>, letting you separate workspaces or view everything in a unified dashboard. For students, professionals, and creators alike, it serves as the <strong className="text-black dark:text-white font-medium">best free goal tracker app</strong> to build consistency without subscription fees.
+            </p>
+            <p>
+              By combining a <strong className="text-black dark:text-white font-medium">free goal tracker</strong> with advanced routing and database persistence, Hactiq gives you the power of a modern cloud-synced system without the complexity. If you're looking for a <strong className="text-black dark:text-white font-medium">simple goal tracker app</strong> that respects your focus, Hactiq is the ultimate <strong className="text-black dark:text-white font-medium">goal tracking app online</strong> to plan your future. It provides the utility of an <strong className="text-black dark:text-white font-medium">online goal planner</strong> with the sleek performance of a modern desktop client, helping you establish clarity and focus on what truly matters in your daily life.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 6.2. Frequently Asked Questions (FAQ) Section */}
+      <section className="relative max-w-4xl mx-auto px-6 py-20 z-10 border-t border-black/5 dark:border-white/5">
+        <h2 className="font-display text-2xl md:text-4xl font-extrabold tracking-tight mb-12 text-center text-black dark:text-white">
+          Frequently Asked Questions
+        </h2>
+        
+        <div className="space-y-2">
+          
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>What is a goal tracker app?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              A goal tracker app is a digital tool designed to help you define, organize, and monitor progress toward personal or professional objectives over time, bridging the gap between high-level ambition and daily tasks.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Is Hactiq free to use?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes, Hactiq is completely free to use. You can access all board features, goal tracking tools, templates, and workspace customizers without any cost.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Does Hactiq work without creating an account?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes. Hactiq features an interactive sandbox mode that requires no signup, letting you test and manage goals locally in your browser session instantly.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Can I use Hactiq to manage daily tasks and long-term goals together?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Absolutely. Hactiq is designed to handle both short-term daily tasks and long-term goals by grouping them into customizable stages on your Kanban board.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>What's the difference between a goal tracker and a to-do list app?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              While to-do lists focus on static checkboxes, a goal tracker like Hactiq integrates visual workflow stages, progress status, categories, priorities, and goal templates to give you a spatial perspective of your goals.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Does Hactiq support Kanban-style boards?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes, Hactiq features a fluid Kanban board interface where you can easily drag and drop your goal cards through stages like Backlog, In Progress, and Completed.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Can I track goals by category or priority in Hactiq?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes. Hactiq allows you to organize every goal by category (such as Work, Personal, Health) and prioritize them (High, Medium, Low) to keep your focus aligned.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Is my data private and secure in Hactiq?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes. When logged in, your data is stored securely in a dedicated PostgreSQL database powered by Supabase, with user authentication managed securely by Firebase.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Can I use Hactiq on mobile?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes, Hactiq is a responsive web application designed to work smoothly on both desktop monitors and mobile device screens.
+            </p>
+          </details>
+
+          <details className="group border-b border-black/5 dark:border-white/5 py-4">
+            <summary className="flex justify-between items-center font-bold text-sm md:text-base cursor-pointer list-none [&::-webkit-details-marker]:hidden text-black dark:text-white select-none">
+              <span>Does Hactiq offer goal templates to get started quickly?</span>
+              <span className="transition-transform group-open:rotate-180 font-mono text-neutral-500 dark:text-neutral-400 text-lg w-5 text-right">+</span>
+            </summary>
+            <p className="mt-2 text-xs md:text-sm text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
+              Yes, Hactiq provides default starter templates (like Daily Essentials, Quick Wins, and Focus Blocks) to help new users seed their boards and start tracking goals immediately.
+            </p>
+          </details>
+
+        </div>
+      </section>
+
       {/* 7. Call To Action (CTAs) */}
       <section className="relative max-w-5xl mx-auto px-6 py-24 z-10 text-center border-t border-black/5 dark:border-white/5">
         <h2 className="font-display text-4xl md:text-6xl font-extrabold tracking-tight mb-6 text-black dark:text-white">Initialize Your Focus Board.</h2>
@@ -584,7 +793,7 @@ export default function LandingPage() {
         </p>
         <button 
           onClick={() => navigate("/register")}
-          className="py-4 px-10 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-black text-xs font-bold uppercase tracking-widest rounded-lg shadow-xl hover:shadow-black/10 dark:hover:shadow-white/10 transition-all duration-200 cursor-pointer"
+          className="py-4 px-10 bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-black text-xs font-bold uppercase tracking-widest rounded-lg transition-all duration-200 cursor-pointer"
         >
           Begin Setup Process
         </button>

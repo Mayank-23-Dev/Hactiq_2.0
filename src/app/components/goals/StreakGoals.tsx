@@ -2,11 +2,21 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Layout } from "../Layout";
 import { useApp, Priority, StreakGoal } from "../../store";
-import { Plus, Trash2, Calendar, Target, Play, Pause, Repeat } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, Target, Play, Pause, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { format, addMonths } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PriorityBadge } from "./Shared";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const parseDateString = (dateStr: string) => {
+  if (!dateStr) return undefined;
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
 
 export function StreakGoals() {
   const { streakGoals, addStreakGoal, updateStreakGoal, deleteStreakGoal, goals, customConfig } = useApp();
@@ -17,6 +27,9 @@ export function StreakGoals() {
   const [priority, setPriority] = useState("");
   const [notes, setNotes] = useState("");
   const [frequency, setFrequency] = useState<StreakGoal["frequency"]>("daily");
+
+  const [isStartOpen, setIsStartOpen] = useState(false);
+  const [isEndOpen, setIsEndOpen] = useState(false);
 
   // Initialize with custom defaults
   useEffect(() => {
@@ -128,7 +141,7 @@ export function StreakGoals() {
                   </div>
 
                   <div className="text-xs text-muted-foreground mb-4 space-y-1">
-                    <div className="flex items-center gap-1"><Calendar size={12}/> {sg.startDate} to {sg.endDate}</div>
+                    <div className="flex items-center gap-1"><CalendarIcon size={12}/> {sg.startDate} to {sg.endDate}</div>
                     <div className="flex items-center gap-1"><Target size={12}/> {completed} / {total} days completed</div>
                   </div>
 
@@ -191,23 +204,65 @@ export function StreakGoals() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Date</label>
-                  <input 
-                    type="date" 
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required 
-                    className="w-full px-3 py-2 bg-background border border-input rounded-lg outline-none" 
-                  />
+                  <Popover open={isStartOpen} onOpenChange={setIsStartOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-10 px-3 py-2 bg-background border border-input rounded-lg",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {startDate ? format(parseDateString(startDate)!, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-[110]" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={parseDateString(startDate)}
+                        onSelect={(date) => {
+                          if (date) {
+                            setStartDate(format(date, "yyyy-MM-dd"));
+                            setIsStartOpen(false);
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">End Date</label>
-                  <input 
-                    type="date" 
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required 
-                    className="w-full px-3 py-2 bg-background border border-input rounded-lg outline-none" 
-                  />
+                  <Popover open={isEndOpen} onOpenChange={setIsEndOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-10 px-3 py-2 bg-background border border-input rounded-lg",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {endDate ? format(parseDateString(endDate)!, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-[110]" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={parseDateString(endDate)}
+                        onSelect={(date) => {
+                          if (date) {
+                            setEndDate(format(date, "yyyy-MM-dd"));
+                            setIsEndOpen(false);
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 

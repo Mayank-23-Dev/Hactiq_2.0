@@ -27,6 +27,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   loading: boolean;
+  uid: string | null;
   emailVerified: boolean;
   creationTime: string | null;
   resendVerification: () => Promise<void>;
@@ -59,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [loading, setLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [uid, setUid] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [creationTime, setCreationTime] = useState<string | null>(null);
 
@@ -257,6 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       try {
         if (firebaseUser) {
+          setUid(firebaseUser.uid);
           // Check if unverified and expired
           if (!firebaseUser.emailVerified) {
             const creationTimeStr = firebaseUser.metadata.creationTime;
@@ -308,6 +311,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to load or initialize user profile:", err);
           }
         } else {
+          setUid(null);
           localStorage.removeItem("hactiq_current_user");
           localStorage.removeItem("gt_user_profile");
           setUser(null);
@@ -451,6 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         loading,
+        uid,
         emailVerified,
         creationTime,
         resendVerification,
