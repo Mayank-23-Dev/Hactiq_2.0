@@ -15,7 +15,7 @@ export function CustomizationTab() {
   const { customConfig, updateCustomConfig } = useApp();
 
   return (
-    <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-10 relative overflow-hidden">
+    <div className="bg-card border border-border rounded-xl p-4 sm:p-8 shadow-sm space-y-10 relative overflow-hidden">
       <div className="flex flex-col gap-2 border-b border-border/40 pb-6">
         <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
           <Sliders className="text-primary w-6 h-6" /> Customization Settings
@@ -187,7 +187,7 @@ export function CustomizationTab() {
                       const newList = customConfig.personaTemplates.filter((x) => x.id !== t.id);
                       updateCustomConfig({ personaTemplates: newList });
                     }}
-                    className="h-8 w-8 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-lg opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                    className="h-8 w-8 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-lg md:opacity-0 md:group-hover:opacity-100 transition cursor-pointer"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -324,7 +324,7 @@ function ConfigSection<T extends { id: string; order: number }>({
       <div className="space-y-3">
         {sortedItems.map((item, idx) => (
           <div key={item.id} className="flex items-center gap-2 group">
-            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
+            <div className="flex flex-col gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition shrink-0">
               <button
                 onClick={() => move(item.id, "up")}
                 disabled={idx === 0}

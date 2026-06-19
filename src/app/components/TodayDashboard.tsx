@@ -85,7 +85,7 @@ export function TodayDashboard() {
                       <h4 className="font-medium text-card-foreground leading-snug">{board.name}</h4>
                       <button
                         onClick={(e) => handleDelete(e, board.id, board.name)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
+                        className="md:opacity-0 md:group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
                       >
                         <Trash2 size={13} />
                       </button>

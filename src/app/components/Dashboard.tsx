@@ -116,7 +116,7 @@ export function Dashboard() {
                             </h4>
                             <button
                               onClick={(e) => handleDelete(e, board.id, board.name)}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all cursor-pointer"
+                              className="md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all cursor-pointer"
                             >
                               <Trash2 size={14} />
                             </button>

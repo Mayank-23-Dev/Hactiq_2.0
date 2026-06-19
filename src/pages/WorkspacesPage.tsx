@@ -99,7 +99,7 @@ export default function WorkspacesPage() {
                         <h4 className="font-semibold text-card-foreground text-base leading-snug group-hover:text-primary transition-colors truncate">{board.name}</h4>
                         <button
                           onClick={(e) => handleDelete(e, board.id, board.name)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
+                          className="md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
                         >
                           <Trash2 size={14} />
                         </button>

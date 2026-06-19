@@ -354,7 +354,7 @@ export function GoalTracker() {
                     placeholder="e.g. read 20 pages high priority learning"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="flex justify-between items-end mb-1">
                       <label className="block text-sm font-medium">Category</label>
@@ -493,11 +493,11 @@ export function GoalTracker() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => setEditingGoal(goal)} className="p-2 text-muted-foreground hover:bg-accent rounded-lg" title="Edit Goal">
+                      <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition shrink-0">
+                        <button onClick={() => setEditingGoal(goal)} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-muted-foreground hover:bg-accent rounded-lg" title="Edit Goal">
                           <Edit2 size={16} />
                         </button>
-                        <button onClick={() => deleteGoal(goal.id)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg" title="Delete Goal">
+                        <button onClick={() => deleteGoal(goal.id)} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-lg" title="Delete Goal">
                           <Trash2 size={16} />
                         </button>
                       </div>

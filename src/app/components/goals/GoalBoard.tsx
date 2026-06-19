@@ -28,7 +28,7 @@ import {
   useDroppable, 
   useSensor, 
   useSensors, 
-  PointerSensor, 
+  MouseSensor, 
   KeyboardSensor,
   TouchSensor,
   DragOverlay
@@ -152,7 +152,7 @@ export function GoalBoard() {
 
   // Setup dnd-kit sensors with touch and pointer configurations
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
       },
@@ -271,7 +271,8 @@ export function GoalBoard() {
                     className="flex items-center gap-2.5 px-4.5 py-2.5 text-sm font-bold text-foreground/90 hover:text-foreground hover:bg-muted transition cursor-pointer bg-transparent"
                   >
                     <CalendarIcon className="size-4 text-muted-foreground" />
-                    <span>{format(selectedDate, "eeee, MMM d, yyyy")}</span>
+                    <span className="hidden sm:inline">{format(selectedDate, "eeee, MMM d, yyyy")}</span>
+                    <span className="inline sm:hidden">{format(selectedDate, "MMM d, yyyy")}</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
@@ -351,16 +352,18 @@ export function GoalBoard() {
           </div>
 
           {/* drag-and-drop preview overlay */}
-          <DragOverlay adjustScale={true}>
+          <DragOverlay adjustScale={false}>
             {activeGoal ? (
-              <GoalCardInner
-                goal={activeGoal}
-                customConfig={customConfig}
-                isOverlay={true}
-                streakGoals={streakGoals}
-                goals={goals}
-                dateStr={dateStr}
-              />
+              <div className="w-[280px] sm:w-[320px] lg:w-[280px] xl:w-[300px] pointer-events-none">
+                <GoalCardInner
+                  goal={activeGoal}
+                  customConfig={customConfig}
+                  isOverlay={true}
+                  streakGoals={streakGoals}
+                  goals={goals}
+                  dateStr={dateStr}
+                />
+              </div>
             ) : null}
           </DragOverlay>
         </DndContext>

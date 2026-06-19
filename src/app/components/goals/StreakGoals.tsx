@@ -172,7 +172,7 @@ export function StreakGoals() {
                   placeholder="e.g. Read 10 pages"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <Select value={category} onValueChange={setCategory}>
@@ -201,7 +201,7 @@ export function StreakGoals() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Date</label>
                   <Popover open={isStartOpen} onOpenChange={setIsStartOpen}>

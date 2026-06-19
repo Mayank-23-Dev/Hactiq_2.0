@@ -206,24 +206,24 @@ export default function ArchivePage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           {!g.completed && aiFeaturesConfig.goalDecomposition && (
                             <button 
                               onClick={() => handleDecompose(g.id, g.title, g.category, g.priority)}
                               disabled={isDecomposing === g.id}
-                              className="p-1.5 text-primary hover:bg-primary/10 rounded-md disabled:opacity-50 cursor-pointer"
+                              className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-md disabled:opacity-50 cursor-pointer"
                               title="Break down with AI"
                             >
                               {isDecomposing === g.id ? <Sparkles className="animate-spin" size={16} /> : <Network size={16} />}
                             </button>
                           )}
-                          <button onClick={() => toggleGoal(g.id)} className="p-1.5 text-primary hover:bg-primary/10 rounded-md cursor-pointer" title="Toggle Status">
+                          <button onClick={() => toggleGoal(g.id)} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-md cursor-pointer" title="Toggle Status">
                             <CheckCircle size={16} />
                           </button>
-                          <button onClick={() => setEditingGoal(g)} className="p-1.5 text-muted-foreground hover:bg-accent rounded-md cursor-pointer" title="Edit Goal">
+                          <button onClick={() => setEditingGoal(g)} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-muted-foreground hover:bg-accent rounded-md cursor-pointer" title="Edit Goal">
                             <Edit2 size={16} />
                           </button>
-                          <button onClick={() => deleteGoal(g.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md cursor-pointer" title="Delete Goal">
+                          <button onClick={() => deleteGoal(g.id)} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-md cursor-pointer" title="Delete Goal">
                             <Trash2 size={16} />
                           </button>
                         </div>

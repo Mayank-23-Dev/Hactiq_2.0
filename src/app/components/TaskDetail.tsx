@@ -108,7 +108,7 @@ export function TaskDetail({ task, onClose }: TaskDetailProps) {
           </div>
 
           {/* Metadata row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Priority */}
             <div className="relative">
               <label className="text-sm font-medium text-foreground block mb-2">Priority</label>
@@ -269,17 +269,17 @@ export function TaskDetail({ task, onClose }: TaskDetailProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
-          <button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-border shrink-0">
+          <button onClick={handleDelete} className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors w-full sm:w-auto">
             <Trash2 size={14} /> Delete
           </button>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors">
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button onClick={onClose} className="flex-1 sm:flex-none px-4 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors">
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+              className="flex-1 sm:flex-none px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
             >
               Save changes
             </button>

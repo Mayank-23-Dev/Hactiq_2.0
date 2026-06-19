@@ -54,7 +54,10 @@ export function CalendarView() {
         <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           <div className="grid grid-cols-7 bg-accent/50 border-b border-border">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
-              <div key={day} className="py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">{day}</div>
+              <div key={day} className="py-3 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                <span className="hidden sm:inline">{day}</span>
+                <span className="sm:hidden">{day.substring(0, 1)}</span>
+              </div>
             ))}
           </div>
           <div className="grid grid-cols-7">
@@ -73,13 +76,13 @@ export function CalendarView() {
                 <div 
                   key={idx}
                   onClick={() => setSelectedDay(dStr)}
-                  className={`h-24 sm:h-32 border-r border-b border-border p-2 cursor-pointer hover:bg-accent/50 transition relative ${!isCurrentMonth ? "opacity-30" : ""} ${statusClass}`}
+                  className={`h-16 sm:h-32 border-r border-b border-border p-1.5 sm:p-2 cursor-pointer hover:bg-accent/50 transition relative ${!isCurrentMonth ? "opacity-30" : ""} ${statusClass}`}
                 >
-                  <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isDayToday ? "bg-primary text-primary-foreground" : "text-foreground"}`}>
+                  <span className={`text-xs sm:text-sm font-bold w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isDayToday ? "bg-primary text-primary-foreground" : "text-foreground"}`}>
                     {format(day, "d")}
                   </span>
                   {dGoals.length > 0 && (
-                    <div className="mt-2 text-[10px] font-medium text-muted-foreground">{dGoals.length} Goals</div>
+                    <div className="mt-1 sm:mt-2 text-[9px] sm:text-[10px] font-medium text-muted-foreground hidden sm:block">{dGoals.length} Goals</div>
                   )}
                   <div className="mt-1 flex gap-0.5 flex-wrap">
                     {dGoals.map(g => (
@@ -118,7 +121,7 @@ export function CalendarView() {
                     <span className={g.completed ? "line-through text-muted-foreground" : "font-medium"}>{g.title}</span>
                     <div className="flex items-center gap-2">
                       <PriorityBadge priorityId={g.priority} customConfig={customConfig} />
-                      <button onClick={() => setEditingGoal(g)} className="p-1 text-muted-foreground hover:bg-accent rounded-md opacity-0 group-hover:opacity-100 transition-opacity" title="Edit Goal">
+                      <button onClick={() => setEditingGoal(g)} className="p-1.5 text-muted-foreground hover:bg-accent rounded-md md:opacity-0 md:group-hover:opacity-100 transition-opacity" title="Edit Goal">
                         <Edit2 size={14} />
                       </button>
                     </div>

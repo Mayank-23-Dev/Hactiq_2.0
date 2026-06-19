@@ -93,7 +93,7 @@ export function YesterdayView() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 sm:opacity-0 group-hover:opacity-100 transition">
+                  <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition">
                     {!goal.completed && aiFeaturesConfig.smartRescheduling && (
                       <button 
                         onClick={() => handleAiSuggest(goal.title, goal.id)}

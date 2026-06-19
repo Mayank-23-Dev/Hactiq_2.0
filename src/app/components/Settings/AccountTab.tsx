@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 export function AccountTab() {
   return (
-    <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-8 relative overflow-hidden">
+    <div className="bg-card border border-border rounded-xl p-4 sm:p-8 shadow-sm space-y-8 relative overflow-hidden">
       <div className="flex flex-col gap-2 border-b border-border/40 pb-6">
         <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
           <Shield className="text-primary w-6 h-6" /> Account Settings

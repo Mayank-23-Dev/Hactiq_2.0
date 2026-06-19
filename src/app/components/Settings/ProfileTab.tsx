@@ -99,7 +99,7 @@ export function ProfileTab() {
   return (
     <div className="space-y-6 w-full">
       {/* Redesigned Profile Card */}
-      <div className="bg-card border border-border rounded-xl p-8 shadow-sm relative overflow-hidden">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-8 shadow-sm relative overflow-hidden">
         <div className="flex flex-col gap-2 mb-8 border-b border-border/40 pb-6">
           <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <User className="text-primary w-6 h-6" /> Profile Settings

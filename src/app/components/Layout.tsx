@@ -441,7 +441,7 @@ Please ask something related to improving your habits or productivity.
               <Menu size={20} />
             </button>
 
-            <h1 className="font-semibold text-foreground truncate">{title}</h1>
+            <h1 className="font-semibold text-foreground truncate max-w-[150px] sm:max-w-none">{title}</h1>
             <div className="flex-1" />
 
             {/* Search */}

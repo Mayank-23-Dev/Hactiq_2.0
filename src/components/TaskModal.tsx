@@ -218,14 +218,14 @@ export function TaskModal({ open, onOpenChange }: TaskModalProps) {
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-6 bg-muted/30 border-t flex flex-row items-center justify-between sm:justify-between">
-          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-2">
+        <DialogFooter className="p-6 bg-muted/30 border-t flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <Button variant="ghost" size="sm" className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive gap-2 justify-center">
             <Trash2 className="h-4 w-4" />
             Delete task
           </Button>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={() => onOpenChange(false)}>Save changes</Button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>Save changes</Button>
           </div>
         </DialogFooter>
       </DialogContent>

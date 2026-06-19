@@ -28,7 +28,7 @@ export function SettingsNav({ activeTab, setActiveTab }: SettingsNavProps) {
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150 text-left w-full cursor-pointer ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150 text-left whitespace-nowrap w-auto md:w-full cursor-pointer ${
               isActive
                 ? "bg-primary/10 text-primary border-l-2 border-primary pl-3.5"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
