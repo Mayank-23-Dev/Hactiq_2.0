@@ -2,9 +2,7 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
-  LayoutDashboard, Settings, Bell, Search, Sun, Moon, Menu, X,
-  ChevronDown, LogOut, User, Trello, ChevronLeft, ChevronRight, Target,
-  History, Calendar, BarChart2, Database, FileText
+  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useApp } from "../store";
 import { ThemeToggle } from "../../components/ThemeToggle";
@@ -12,6 +10,7 @@ import { Particles } from "./ui/particles";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./ui/tooltip";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { navItems } from "../../config/navigation";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,7 +18,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title = "Dashboard" }: LayoutProps) {
-  const { boards, theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead } = useApp();
+  const { theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -35,8 +34,6 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
     });
   };
 
-  const [boardsExpanded, setBoardsExpanded] = useState(true);
-  const [goalsExpanded, setGoalsExpanded] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -78,96 +75,21 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
 
           {/* Nav */}
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            <NavItem to="/" icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/")} collapsed={isCollapsed} />
-            <NavItem to="/activities" icon={<Bell size={16} />} label="Activities" active={isActive("/activities")} collapsed={isCollapsed} badge={unreadCount} />
-
-            {/* Goal Tracker Section */}
-            {isCollapsed ? (
-              <>
-                <NavItem to="/goals" icon={<Target size={16} className="text-primary" />} label="Goal Tracker" active={isActive("/goals")} collapsed={isCollapsed} />
-                <NavItem to="/goal-board" icon={<Trello size={16} />} label="Goal Board" active={isActive("/goal-board")} collapsed={isCollapsed} />
-              </>
-            ) : (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setGoalsExpanded(!goalsExpanded)}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                >
-                  <Target size={16} className="shrink-0 text-primary" />
-                  <span className="flex-1 text-left font-medium">Goal Tracker</span>
-                  <ChevronDown size={14} className={`transition-transform ${goalsExpanded ? "rotate-180" : ""}`} />
-                </button>
-                {goalsExpanded && (
-                  <div className="ml-4 mt-1 space-y-0.5">
-                    <SubNavItem to="/goals" icon={<Target size={14} />} label="Today" active={isActive("/goals")} />
-                    <SubNavItem to="/goal-board" icon={<Trello size={14} />} label="Goal Board" active={isActive("/goal-board")} />
-                    <SubNavItem to="/goals/streaks" icon={<Target size={14} />} label="Streak Goals" active={isActive("/goals/streaks")} />
-                    <SubNavItem to="/goals/yesterday" icon={<History size={14} />} label="Yesterday" active={isActive("/goals/yesterday")} />
-                    <SubNavItem to="/goals/calendar" icon={<Calendar size={14} />} label="Calendar" active={isActive("/goals/calendar")} />
-                    <SubNavItem to="/goals/stats" icon={<BarChart2 size={14} />} label="Stats" active={isActive("/goals/stats")} />
-                    <SubNavItem to="/goals/database" icon={<Database size={14} />} label="All Goals" active={isActive("/goals/database")} />
-                    <SubNavItem to="/goals/templates" icon={<FileText size={14} />} label="Templates" active={isActive("/goals/templates")} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Boards Section */}
-            {isCollapsed ? (
-              boards.map(board => (
-                <Tooltip key={board.id}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={`/board/${board.id}`}
-                      className={`flex items-center justify-center px-2 py-1.5 rounded-md text-sm transition-colors ${
-                        location.pathname === `/board/${board.id}`
-                          ? "bg-sidebar-accent text-sidebar-primary"
-                          : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                      }`}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: board.color }} />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {board.name}
-                  </TooltipContent>
-                </Tooltip>
-              ))
-            ) : (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setBoardsExpanded(!boardsExpanded)}
-                  className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                >
-                  <Trello size={16} className="shrink-0" />
-                  <span className="flex-1 text-left">Boards</span>
-                  <ChevronDown size={14} className={`transition-transform ${boardsExpanded ? "rotate-180" : ""}`} />
-                </button>
-                {boardsExpanded && (
-                  <div className="ml-4 mt-1 space-y-0.5">
-                    {boards.map(board => (
-                      <button
-                        key={board.id}
-                        type="button"
-                        onClick={() => navigate(`/board/${board.id}`)}
-                        className={`flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm transition-colors ${
-                          location.pathname === `/board/${board.id}`
-                            ? "bg-sidebar-accent text-sidebar-primary"
-                            : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                        }`}
-                      >
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: board.color }} />
-                        <span className="truncate">{board.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" active={isActive("/settings")} collapsed={isCollapsed} />
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const badge = item.label === "Activities" ? unreadCount : undefined;
+              return (
+                <NavItem
+                  key={item.path}
+                  to={item.path}
+                  icon={<Icon size={16} />}
+                  label={item.label}
+                  active={isActive(item.path)}
+                  collapsed={isCollapsed}
+                  badge={badge}
+                />
+              );
+            })}
           </nav>
 
           {/* User */}
@@ -349,20 +271,3 @@ function NavItem({ to, icon, label, active, collapsed, badge }: {
   return link;
 }
 
-function SubNavItem({ to, icon, label, active }: {
-  to: string; icon: React.ReactNode; label: string; active: boolean;
-}) {
-  return (
-    <Link
-      to={to}
-      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-        active
-          ? "bg-sidebar-accent text-sidebar-primary font-medium"
-          : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-      }`}
-    >
-      <span className="shrink-0">{icon}</span>
-      <span className="truncate">{label}</span>
-    </Link>
-  );
-}

@@ -341,6 +341,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!item || item === "null" || item === "undefined") return fallback;
       const parsed = JSON.parse(item);
       if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback;
+      if (
+        fallback && typeof fallback === "object" && !Array.isArray(fallback) &&
+        parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ) {
+        return { ...fallback, ...parsed };
+      }
       return parsed;
     } catch (e) {
       return fallback;

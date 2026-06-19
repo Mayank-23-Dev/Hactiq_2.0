@@ -42,6 +42,7 @@ export interface Milestone {
 
 // Helper to hash string to a number
 export function hashCode(str: string): number {
+  if (!str) return 0;
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -51,7 +52,7 @@ export function hashCode(str: string): number {
 
 // Current Streak Calculation
 export function calculateCurrentStreak(goals: Goal[]): number {
-  if (goals.length === 0) return 0;
+  if (!goals || goals.length === 0) return 0;
   let streak = 0;
   let checkDate = new Date();
   
@@ -67,7 +68,7 @@ export function calculateCurrentStreak(goals: Goal[]): number {
       }
     } else {
       // Check if there are any older goals
-      const olderGoals = goals.some(g => g.date < dStr);
+      const olderGoals = goals.some(g => g.date && g.date < dStr);
       if (!olderGoals) break;
     }
     checkDate = subDays(checkDate, 1);
@@ -81,6 +82,7 @@ export function getWeekdayPerformance(goals: Goal[]): WeekdayPerf[] {
   const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const perfMap = weekdays.map((dayName, index) => {
     const dayGoals = goals.filter(g => {
+      if (!g.date) return false;
       try {
         const d = parseISO(g.date);
         return getDay(d) === index;
@@ -108,7 +110,7 @@ export function getHourlyProductivity(goals: Goal[]) {
 
   completedGoals.forEach(g => {
     // Generate deterministic completion hour based on goal ID hash
-    const hash = Math.abs(hashCode(g.id));
+    const hash = Math.abs(hashCode(g.id || ""));
     // Simulate typical productive hours: mostly 9 AM - 6 PM
     let hour = 9 + (hash % 10); // 9 to 18
     if (hash % 10 === 0) hour = 7 + (hash % 2); // early bird
@@ -126,12 +128,12 @@ export function getGoalVelocity(goals: Goal[]) {
   
   // Last 7 days
   const last7DaysLimit = format(subDays(new Date(), 7), "yyyy-MM-dd");
-  const completedLast7 = goals.filter(g => g.completed && g.date >= last7DaysLimit).length;
+  const completedLast7 = goals.filter(g => g.completed && g.date && g.date >= last7DaysLimit).length;
   const rateLast7 = Math.round((completedLast7 / 7) * 10) / 10;
 
   // Last 30 days
   const last30DaysLimit = format(subDays(new Date(), 30), "yyyy-MM-dd");
-  const completedLast30 = goals.filter(g => g.completed && g.date >= last30DaysLimit).length;
+  const completedLast30 = goals.filter(g => g.completed && g.date && g.date >= last30DaysLimit).length;
   const rateLast30 = Math.round((completedLast30 / 30) * 10) / 10;
 
   return {
@@ -145,7 +147,10 @@ export function getGoalVelocity(goals: Goal[]) {
 export function getPriorityBreakdown(goals: Goal[]): PriorityBreakdown[] {
   const priorities = ["high", "medium", "low"];
   return priorities.map(p => {
-    const priorityGoals = goals.filter(g => g.priority.toLowerCase() === p);
+    const priorityGoals = goals.filter(g => {
+      const priority = g.priority || "medium";
+      return priority.toLowerCase() === p;
+    });
     const completed = priorityGoals.filter(g => g.completed).length;
     const total = priorityGoals.length;
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -163,6 +168,7 @@ export function getMoodEnergyCorrelation(
   goals: Goal[],
   dailyMetadata: Record<string, DayMetadata>
 ): MoodEnergyCorrelation[] {
+  if (!dailyMetadata) return [];
   const dates = Object.keys(dailyMetadata);
   if (dates.length === 0) return [];
 
@@ -186,7 +192,7 @@ export function getMoodEnergyCorrelation(
     const item = correlations[mood];
     return {
       name: mood.charAt(0).toUpperCase() + mood.slice(1),
-      energyName: item.energy.charAt(0).toUpperCase() + item.energy.slice(1),
+      energyName: (item.energy || "Normal").charAt(0).toUpperCase() + (item.energy || "Normal").slice(1),
       rate: Math.round((item.completed / item.total) * 100),
       goalCount: item.total
     };
@@ -200,9 +206,9 @@ export function getAverageCompletionTime(goals: Goal[]) {
   
   let totalHours = 0;
   completed.forEach(g => {
-    const hash = Math.abs(hashCode(g.id));
-    // High priority gets completed faster
-    const baseHours = g.priority.toLowerCase() === "high" ? 4 : g.priority.toLowerCase() === "medium" ? 8 : 12;
+    const hash = Math.abs(hashCode(g.id || ""));
+    const priority = g.priority || "medium";
+    const baseHours = priority.toLowerCase() === "high" ? 4 : priority.toLowerCase() === "medium" ? 8 : 12;
     totalHours += baseHours + (hash % 6);
   });
 
@@ -212,7 +218,7 @@ export function getAverageCompletionTime(goals: Goal[]) {
 // Top categories
 export function getTopCategories(goals: Goal[], categories: { id: string; name: string }[]) {
   return categories.map(cat => {
-    const catGoals = goals.filter(g => g.category === cat.id);
+    const catGoals = goals.filter(g => (g.category || "").toLowerCase() === cat.id.toLowerCase());
     const completed = catGoals.filter(g => g.completed).length;
     const total = catGoals.length;
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -252,7 +258,6 @@ export function getUnfinishedBusiness(goals: Goal[]) {
 // Badge/Milestone checks
 export function getMilestones(goals: Goal[]): Milestone[] {
   const completedCount = goals.filter(g => g.completed).length;
-  const totalCount = goals.length;
   const currentStreak = calculateCurrentStreak(goals);
 
   return [
@@ -307,7 +312,7 @@ export function getMilestones(goals: Goal[]): Milestone[] {
 // Project streak via simple projection
 export function getProjectedStreak(goals: Goal[]): { current: number; projected: number } {
   const current = calculateCurrentStreak(goals);
-  if (goals.length === 0) return { current: 0, projected: 0 };
+  if (!goals || goals.length === 0) return { current: 0, projected: 0 };
 
   // Calculate completion trend in last 7 days
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -319,7 +324,7 @@ export function getProjectedStreak(goals: Goal[]): { current: number; projected:
   const completionCount = last7Days.filter(Boolean).length;
   const probability = completionCount / 7;
 
-  // Simple projection: if probability >= 0.7, assume streak increases by 4 days, else 1 day, or remains
+  // Simple projection: if probability >= 0.7, assume streak increases by 5 days, else 1 day
   let projected = current;
   if (probability >= 0.8) projected += 5;
   else if (probability >= 0.5) projected += 2;
