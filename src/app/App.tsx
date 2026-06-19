@@ -37,9 +37,9 @@ function AppBackground() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <BrowserRouter>
+    <AppProvider>
+      <BrowserRouter>
+        <AuthProvider>
           <AppBackground />
           <Routes>
             {/* Public/Home Routes */}
@@ -75,10 +75,10 @@ export default function App() {
               <Route path="/all-goals" element={<ArchivePage />} />
             </Route>
           </Routes>
-        </BrowserRouter>
-        <Toaster position="bottom-right" richColors />
-      </AppProvider>
-    </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
+      <Toaster position="bottom-right" richColors />
+    </AppProvider>
   );
 }
 

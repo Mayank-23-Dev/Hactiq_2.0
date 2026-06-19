@@ -1,5 +1,6 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -43,6 +44,9 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const stored = localStorage.getItem("hactiq_current_user") || localStorage.getItem("gt_user_profile");
@@ -171,6 +175,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
 
             setUser(userProfileData);
+
+            // Redirect authenticated users away from login/register routes to the main dashboard
+            if (["/login", "/register"].includes(location.pathname)) {
+              navigate("/");
+            }
           }
         } catch (err) {
           console.error("Failed to load or initialize user profile:", err);
@@ -184,22 +193,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [location.pathname, navigate]);
 
   // Handle redirect result on mount
   useEffect(() => {
     const handleRedirect = async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (result) {
+        if (result && result.user) {
           console.log("Google redirect sign-in successful:", result.user);
+          
+          // Sync profile to database
+          const profile = await syncUserProfile(result.user);
+          
+          if (profile) {
+            const userProfileData: UserProfile = {
+              name: profile.name,
+              email: profile.email,
+              avatar: profile.avatar || "U",
+              bio: profile.bio || "",
+              avatarUrl: profile.avatar_url || ""
+            };
+
+            // Save in localStorage for legacy code compatibility
+            localStorage.setItem("hactiq_current_user", JSON.stringify(userProfileData));
+            localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
+
+            setUser(userProfileData);
+          }
+
+          // Explicitly navigate to the app's main route
+          navigate("/");
         }
       } catch (err: any) {
         console.error("Error during Google redirect resolution:", err);
       }
     };
     handleRedirect();
-  }, []);
+  }, [navigate]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
