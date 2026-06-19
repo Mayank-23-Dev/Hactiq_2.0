@@ -265,3 +265,34 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   --calendar-indicator-invert: 1;
 }
 
+/* Recharts Shared Global Customizations for Dark/Light Mode Compatibility */
+
+/* Prevent Y-Axis tick label clipping */
+.recharts-surface {
+  overflow: visible !important;
+}
+.recharts-wrapper {
+  overflow: visible !important;
+}
+
+/* Align active hover bar highlight colors to theme's --muted variable */
+.recharts-rectangle.recharts-tooltip-cursor {
+  fill: var(--muted) !important;
+  fill-opacity: 0.15 !important;
+}
+
+/* Tooltip container background, border, and shadows matching theme card design */
+.recharts-default-tooltip {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Tooltip text colors matching theme foreground color */
+.recharts-default-tooltip .recharts-tooltip-item,
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: var(--foreground) !important;
+}
+
+

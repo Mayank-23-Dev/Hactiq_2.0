@@ -29,7 +29,7 @@ export const MoodCorrelationChart = memo(function MoodCorrelationChart({
         ) : (
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <BarChart data={data} margin={{ top: 10, right: 10, left: -5, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/40" />
                 <XAxis
                   dataKey="name"
@@ -44,6 +44,7 @@ export const MoodCorrelationChart = memo(function MoodCorrelationChart({
                   domain={[0, 100]}
                   tickFormatter={(val) => `${val}%`}
                   tickCount={6}
+                  width={40}
                   className="text-xs font-medium fill-muted-foreground"
                 />
                 <Tooltip
@@ -58,10 +59,13 @@ export const MoodCorrelationChart = memo(function MoodCorrelationChart({
                     return item ? `${label} Mood (${item.energyName} Energy)` : label;
                   }}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
                     borderRadius: "8px",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+                  cursor={{ fill: "var(--muted)", fillOpacity: 0.15 }}
                 />
                 <Bar dataKey="rate" radius={[4, 4, 0, 0]} barSize={32}>
                   {data.map((_, index) => (

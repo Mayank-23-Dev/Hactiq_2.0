@@ -7,6 +7,7 @@ export interface RealtimeTableOptions<T> {
   orderDescending?: boolean;
   mapRow?: (row: any) => T;
   guestData?: T[];
+  primaryKeyField?: string; // Optional custom primary key column in the database table (e.g. "date")
 }
 
 export function useRealtimeTable<T extends { id: string | number }>(
@@ -89,7 +90,10 @@ export function useRealtimeTable<T extends { id: string | number }>(
               prev.map((row) => (row.id === updatedRow.id ? updatedRow : row))
             );
           } else if (payload.eventType === "DELETE") {
-            const deletedId = payload.old.id;
+            const pkField = options.primaryKeyField ?? "id";
+            const deletedId = payload.old[pkField] !== undefined
+              ? payload.old[pkField]
+              : (mapper(payload.old) as any)?.id ?? payload.old.id;
             setData((prev) => prev.filter((row) => row.id !== deletedId));
           }
         }
@@ -99,7 +103,7 @@ export function useRealtimeTable<T extends { id: string | number }>(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tableName, userId, options.filterField, options.orderByField, options.orderDescending]);
+  }, [tableName, userId, options.filterField, options.orderByField, options.orderDescending, options.primaryKeyField]);
 
   return { data, setData, isLoading };
 }

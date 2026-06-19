@@ -42,7 +42,7 @@ export const WeeklyPerformanceChart = memo(function WeeklyPerformanceChart({
               data={chartData}
               barGap={4}
               barCategoryGap={12}
-              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              margin={{ top: 10, right: 10, left: -5, bottom: 0 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/40" />
               <XAxis
@@ -58,18 +58,19 @@ export const WeeklyPerformanceChart = memo(function WeeklyPerformanceChart({
                 allowDecimals={false}
                 domain={[0, Math.ceil(maxVal * 1.15)]}
                 tickCount={6}
+                width={35}
                 className="text-xs font-medium fill-muted-foreground"
               />
               <Tooltip
-                cursor={{ fill: "rgba(100, 100, 100, 0.05)" }}
+                cursor={{ fill: "var(--muted)", fillOpacity: 0.15 }}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  borderColor: "hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  borderColor: "var(--border)",
                   borderRadius: "8px",
                   boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
                 }}
-                labelStyle={{ fontWeight: "bold", fontSize: "12px", color: "hsl(var(--foreground))" }}
-                itemStyle={{ fontSize: "12px", padding: "2px 0" }}
+                labelStyle={{ fontWeight: "bold", fontSize: "12px", color: "var(--foreground)" }}
+                itemStyle={{ fontSize: "12px", padding: "2px 0", color: "var(--foreground)" }}
                 labelFormatter={(_, items) => {
                   if (items && items[0]) {
                     return (items[0].payload as any).labelDate;
@@ -91,7 +92,7 @@ export const WeeklyPerformanceChart = memo(function WeeklyPerformanceChart({
               <Bar
                 dataKey="set"
                 name="Goals Set"
-                fill="hsl(var(--primary))"
+                fill="var(--primary)"
                 radius={[4, 4, 0, 0]}
                 barSize={20}
               />

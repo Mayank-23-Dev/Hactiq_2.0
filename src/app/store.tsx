@@ -536,6 +536,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     uid,
     {
       guestData: [],
+      primaryKeyField: "date",
       mapRow: (m: any) => ({
         id: m.date,
         mood: m.mood || undefined,
@@ -1322,42 +1323,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!streak.active) return [];
 
     const newGoals: Goal[] = [];
-    const start = new Date(streak.startDate + "T00:00:00");
-    const end = new Date(streak.endDate + "T00:00:00");
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + 30);
-    const actualEnd = end < maxDate ? end : maxDate;
+    const todayStr = format(today, "yyyy-MM-dd");
 
-    for (let d = new Date(start); d <= actualEnd; d.setDate(d.getDate() + 1)) {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+    const start = new Date(streak.startDate + "T00:00:00");
+    const end = new Date(streak.endDate + "T00:00:00");
 
-      let shouldGenerate = false;
-      if (streak.frequency === 'daily') shouldGenerate = true;
-      else if (streak.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldGenerate = true;
-      else if (streak.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldGenerate = true;
-      else if (streak.frequency === 'custom' && streak.customDays?.includes(dayOfWeek)) shouldGenerate = true;
+    // Check if today is within the streak active range
+    if (today < start || today > end) return [];
 
-      if (shouldGenerate) {
-        const exists = currentGoals.some(g => g.streakId === streak.id && g.date === dateStr);
-        if (!exists) {
-          newGoals.push({
-            id: `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`,
-            title: streak.title,
-            category: streak.category,
-            priority: streak.priority,
-            notes: streak.notes,
-            completed: false,
-            streakId: streak.id,
-            date: dateStr,
-            status: "todo"
-          });
-        }
+    const dayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+
+    let shouldGenerate = false;
+    if (streak.frequency === 'daily') shouldGenerate = true;
+    else if (streak.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) shouldGenerate = true;
+    else if (streak.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldGenerate = true;
+    else if (streak.frequency === 'custom' && streak.customDays?.includes(dayOfWeek)) shouldGenerate = true;
+
+    if (shouldGenerate) {
+      const exists = currentGoals.some(g => g.streakId === streak.id && g.date === todayStr);
+      if (!exists) {
+        newGoals.push({
+          id: `g${Date.now()}_${Math.random().toString(36).substr(2,9)}`,
+          title: streak.title,
+          category: streak.category,
+          priority: streak.priority,
+          notes: streak.notes,
+          completed: false,
+          streakId: streak.id,
+          date: todayStr,
+          status: "todo"
+        });
       }
     }
     return newGoals;
@@ -1427,10 +1424,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .then(({ error }) => {
           if (error) console.error("Error deleting streak goal from database:", error);
         });
+
+      supabase.from("goals")
+        .delete()
+        .eq("streak_id", id)
+        .gte("date", todayStr)
+        .eq("completed", false)
+        .then(({ error }) => {
+          if (error) console.error("Error deleting associated goals from database:", error);
+        });
     }
   }, [isAuthenticated]);
 
   const regenerateAllStreakGoals = useCallback(() => {
+    if (isLoadingGoals || isLoadingStreakGoals) {
+      console.log("[Streak Gen] Waiting for goals or streak goals to finish loading...");
+      return;
+    }
+
     setGoals(prevGoals => {
       let newlyGenerated: Goal[] = [];
       streakGoals.forEach(sg => {
@@ -1454,14 +1465,91 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           status: g.status
         }));
         
-        supabase.from("goals").insert(rows).then(({ error }) => {
-          if (error) console.error("Error saving regenerated streak instances to database:", error);
-        });
+        supabase.from("goals")
+          .upsert(rows, { onConflict: "streak_id, date" })
+          .then(({ error }) => {
+            if (error) console.error("Error saving regenerated streak instances to database:", error);
+          });
       }
 
       return [...newlyGenerated, ...prevGoals];
     });
-  }, [streakGoals, generateMissingStreakInstances, isAuthenticated]);
+  }, [streakGoals, generateMissingStreakInstances, isAuthenticated, isLoadingGoals, isLoadingStreakGoals]);
+
+  // One-time cleanup script for duplicate streak goals
+  useEffect(() => {
+    if (!isAuthenticated || !uid) return;
+
+    const runCleanup = async () => {
+      try {
+        console.log("[Cleanup] Checking for duplicate streak goals in database...");
+        const { data: allGoals, error } = await supabase
+          .from("goals")
+          .select("*")
+          .eq("user_id", uid);
+
+        if (error) {
+          console.error("[Cleanup] Error fetching goals for cleanup:", error.message);
+          return;
+        }
+
+        if (!allGoals || allGoals.length === 0) {
+          console.log("[Cleanup] No goals found to clean up.");
+          return;
+        }
+
+        // Group by streak_id + date
+        const groups: Record<string, typeof allGoals> = {};
+        allGoals.forEach(g => {
+          if (!g.streak_id) return;
+          const key = `${g.streak_id}_${g.date}`;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(g);
+        });
+
+        const toDeleteIds: string[] = [];
+        Object.keys(groups).forEach(key => {
+          const group = groups[key];
+          if (group.length > 1) {
+            // Sort group: completed DESC (true first), then created_at ASC (earliest first)
+            group.sort((a, b) => {
+              if (a.completed && !b.completed) return -1;
+              if (!a.completed && b.completed) return 1;
+              return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            });
+
+            // Keep the first (best) goal, delete the rest
+            const rest = group.slice(1);
+            rest.forEach(r => toDeleteIds.push(r.id));
+          }
+        });
+
+        if (toDeleteIds.length > 0) {
+          console.log(`[Cleanup] Deleting ${toDeleteIds.length} duplicate goals from database...`);
+          const { error: deleteError } = await supabase
+            .from("goals")
+            .delete()
+            .in("id", toDeleteIds);
+
+          if (deleteError) {
+            console.error("[Cleanup] Error deleting duplicate goals:", deleteError.message);
+          } else {
+            console.log(`[Cleanup] Cleaned up ${toDeleteIds.length} duplicate goal entries successfully.`);
+            toast.success(`Automatically cleaned up ${toDeleteIds.length} duplicate streak goals.`);
+            
+            // Optimistically update local state so the UI reflects it immediately
+            setGoals(prev => prev.filter(g => !toDeleteIds.includes(g.id)));
+          }
+        } else {
+          console.log("[Cleanup] No duplicate streak goals found in database.");
+        }
+      } catch (err) {
+        console.error("[Cleanup] Unexpected error running cleanup:", err);
+      }
+    };
+
+    runCleanup();
+  }, [isAuthenticated, uid, setGoals]);
 
   const setGroqApiKey = useCallback((key: string) => {
     setGroqApiKeyInternal(key);

@@ -34,7 +34,7 @@ export const ProductivityCharts = memo(function ProductivityCharts({
         <CardContent>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weekdayData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <BarChart data={weekdayData} margin={{ top: 10, right: 10, left: -5, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/40" />
                 <XAxis
                   dataKey="dayName"
@@ -50,17 +50,21 @@ export const ProductivityCharts = memo(function ProductivityCharts({
                   domain={[0, 100]}
                   tickFormatter={(val) => `${val}%`}
                   tickCount={6}
+                  width={40}
                   className="text-xs font-medium fill-muted-foreground"
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, "Completion Rate"]}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
                     borderRadius: "8px",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+                  cursor={{ fill: "var(--muted)", fillOpacity: 0.15 }}
                 />
-                <Bar dataKey="rate" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={24} />
+                <Bar dataKey="rate" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -75,7 +79,7 @@ export const ProductivityCharts = memo(function ProductivityCharts({
         <CardContent>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -5, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4}/>
@@ -95,15 +99,18 @@ export const ProductivityCharts = memo(function ProductivityCharts({
                   tickLine={false}
                   allowDecimals={false}
                   tickCount={5}
+                  width={35}
                   className="text-xs font-medium fill-muted-foreground"
                 />
                 <Tooltip
                   formatter={(value) => [value, "Completed Goals"]}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
                     borderRadius: "8px",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
                 />
                 <Area
                   type="monotone"

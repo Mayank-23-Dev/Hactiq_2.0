@@ -27,10 +27,9 @@ export function StreakGoals() {
   const [priority, setPriority] = useState("");
   const [notes, setNotes] = useState("");
   const [frequency, setFrequency] = useState<StreakGoal["frequency"]>("daily");
-
+  
   const [isStartOpen, setIsStartOpen] = useState(false);
   const [isEndOpen, setIsEndOpen] = useState(false);
-
   // Initialize with custom defaults
   useEffect(() => {
     if (!category && customConfig.categories.length > 0) {
@@ -40,7 +39,6 @@ export function StreakGoals() {
       setPriority(customConfig.priorities[0].id);
     }
   }, [customConfig, category, priority]);
-  
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(format(addMonths(new Date(), 1), "yyyy-MM-dd"));

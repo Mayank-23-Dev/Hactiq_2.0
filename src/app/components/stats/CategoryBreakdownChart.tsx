@@ -50,10 +50,12 @@ export const CategoryBreakdownChart = memo(function CategoryBreakdownChart({
                 <Tooltip
                   formatter={(value) => [`${value}% Completion`, "Category"]}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
                     borderRadius: "8px",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
                 />
                 <Legend
                   verticalAlign="bottom"

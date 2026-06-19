@@ -4,6 +4,7 @@ import { useApp } from "../app/store";
 import { Flame as Fire, CheckCircle, ListChecks, Bot, Sparkles, RefreshCw, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays, eachDayOfInterval } from "date-fns";
+import ReactMarkdown from "react-markdown";
 
 // Subcomponents
 import { WeeklyPerformanceChart } from "../app/components/stats/WeeklyPerformanceChart";
@@ -197,8 +198,18 @@ export default function StatsView() {
             <div className="p-3 bg-primary/10 rounded-full text-primary shrink-0"><Bot size={26} /></div>
             <div className="flex-1">
               <h3 className="font-bold text-primary mb-2 text-lg">AI Coach Insights (Last 30 Days)</h3>
-              <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
-                {aiAdvice}
+              <div className="text-sm text-foreground/80 leading-relaxed space-y-2">
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                    li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                    strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+                  }}
+                >
+                  {aiAdvice}
+                </ReactMarkdown>
               </div>
               <button onClick={() => setAiAdvice(null)} className="mt-4 text-xs text-primary hover:underline font-semibold cursor-pointer">Dismiss Insights</button>
             </div>

@@ -25,7 +25,7 @@ export const PriorityAndTrendCharts = memo(function PriorityAndTrendCharts({
         <CardContent className="flex flex-col justify-center min-h-[250px]">
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={priorityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <BarChart data={priorityData} margin={{ top: 10, right: 10, left: -5, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/40" />
                 <XAxis
                   dataKey="priority"
@@ -40,15 +40,19 @@ export const PriorityAndTrendCharts = memo(function PriorityAndTrendCharts({
                   domain={[0, 100]}
                   tickFormatter={(val) => `${val}%`}
                   tickCount={6}
+                  width={40}
                   className="text-xs font-medium fill-muted-foreground"
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, "Completion Rate"]}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
                     borderRadius: "8px",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+                  cursor={{ fill: "var(--muted)", fillOpacity: 0.15 }}
                 />
                 <Bar dataKey="rate" radius={[4, 4, 0, 0]} barSize={30}>
                   {priorityData.map((_, index) => (
@@ -69,7 +73,7 @@ export const PriorityAndTrendCharts = memo(function PriorityAndTrendCharts({
         <CardContent>
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <LineChart data={trendData} margin={{ top: 10, right: 10, left: -5, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/40" />
                 <XAxis
                   dataKey="date"
@@ -84,20 +88,23 @@ export const PriorityAndTrendCharts = memo(function PriorityAndTrendCharts({
                   domain={[0, 100]}
                   tickFormatter={(val) => `${val}%`}
                   tickCount={6}
+                  width={40}
                   className="text-xs font-medium fill-muted-foreground"
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, "Completion Rate"]}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
                     borderRadius: "8px",
                   }}
+                  itemStyle={{ color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="rate"
-                  stroke="hsl(var(--primary))"
+                  stroke="var(--primary)"
                   strokeWidth={2.5}
                   dot={{ r: 2, strokeWidth: 1 }}
                   activeDot={{ r: 5 }}
