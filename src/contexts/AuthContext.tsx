@@ -157,8 +157,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Get the Firebase ID token
           const token = await firebaseUser.getIdToken();
           
-          // Create the authenticated client using the token
-          const authSupabase = createAuthenticatedSupabaseClient(token);
+          // Exchange Firebase token for Supabase session with the correct role claim
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithIdToken({
+            provider: 'firebase',
+            token: token,
+          });
+
+          if (signInError) {
+            throw signInError;
+          }
+
+          const supabaseSessionToken = signInData?.session?.access_token;
+          if (!supabaseSessionToken) {
+            throw new Error("Failed to retrieve Supabase session token from signInWithIdToken");
+          }
+
+          // Create the authenticated client using the Supabase session token (not the Firebase token)
+          const authSupabase = createAuthenticatedSupabaseClient(supabaseSessionToken);
 
           // Sync profile to database and read updated row values using the authenticated client
           const profile = await syncUserProfile(firebaseUser, authSupabase);
@@ -228,9 +243,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Set Firebase Auth display name
       await updateProfile(firebaseUser, { displayName: name });
 
-      // Explicitly set Supabase header and session first for the insert to succeed
+      // Get Firebase ID token
       const token = await firebaseUser.getIdToken();
-      const authSupabase = createAuthenticatedSupabaseClient(token);
+
+      // Exchange Firebase token for Supabase session
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithIdToken({
+        provider: 'firebase',
+        token: token,
+      });
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      const supabaseSessionToken = signInData?.session?.access_token;
+      if (!supabaseSessionToken) {
+        throw new Error("Failed to retrieve Supabase session token from signInWithIdToken");
+      }
+
+      // Create the authenticated client using the Supabase session token
+      const authSupabase = createAuthenticatedSupabaseClient(supabaseSessionToken);
 
       // 3. Sync profile immediately with name override
       const updatedUser = {
@@ -258,6 +290,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
+      // Clear Supabase session first
+      await supabase.auth.signOut();
+      
+      // Clear Firebase session
       await signOut(auth);
     } catch (err: any) {
       console.error("Error signing out:", err);
