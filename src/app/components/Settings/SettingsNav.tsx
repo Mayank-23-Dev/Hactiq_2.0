@@ -20,24 +20,23 @@ export function SettingsNav({ activeTab, setActiveTab }: SettingsNavProps) {
   ] as const;
 
   return (
-    <nav className="flex flex-row md:flex-col gap-1 w-full md:w-56 shrink-0 overflow-x-auto md:overflow-visible pb-4 md:pb-0">
+    <nav className="flex flex-row md:flex-col gap-1.5 w-full md:w-64 shrink-0 overflow-x-auto md:overflow-visible pb-4 md:pb-0 border-b md:border-b-0 md:border-r border-border/40 pr-0 md:pr-4">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = activeTab === item.id;
         return (
-          <Button
+          <button
             key={item.id}
-            variant={isActive ? "secondary" : "ghost"}
             onClick={() => setActiveTab(item.id)}
-            className={`justify-start gap-3 px-4 py-2.5 h-10 w-full text-sm transition-colors font-medium ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150 text-left w-full cursor-pointer ${
               isActive
-                ? "bg-secondary text-secondary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                ? "bg-primary/10 text-primary border-l-2 border-primary pl-3.5"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
             }`}
           >
-            <Icon size={16} />
+            <Icon size={16} className={`${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
             <span>{item.label}</span>
-          </Button>
+          </button>
         );
       })}
     </nav>

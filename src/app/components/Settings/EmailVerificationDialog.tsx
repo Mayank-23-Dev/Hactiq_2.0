@@ -3,8 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "../ui/input-otp";
-import { Mail, Shield, Loader2 } from "lucide-react";
+import { Mail, Shield, Loader2, Info, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface EmailVerificationDialogProps {
@@ -23,7 +22,6 @@ export function EmailVerificationDialog({
   onVerify
 }: EmailVerificationDialogProps) {
   const [newEmail, setNewEmail] = useState("");
-  const [code, setCode] = useState("");
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [timer, setTimer] = useState(0);
@@ -33,7 +31,6 @@ export function EmailVerificationDialog({
   useEffect(() => {
     if (open) {
       setNewEmail("");
-      setCode("");
       setCodeSent(false);
       setTimer(0);
       if (timerRef.current) {
@@ -54,7 +51,7 @@ export function EmailVerificationDialog({
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  const handleSendCode = async () => {
+  const handleSendLink = async () => {
     if (!isValidEmail(newEmail)) {
       toast.error("Please enter a valid email address");
       return;
@@ -68,10 +65,10 @@ export function EmailVerificationDialog({
     try {
       await onSendCode(newEmail.trim());
       setCodeSent(true);
-      toast.success("Verification code sent to " + newEmail);
+      toast.success("Verification link sent to " + newEmail);
       startTimer();
     } catch (error: any) {
-      toast.error(error.message || "Failed to send verification code");
+      toast.error(error.message || "Failed to send verification email");
     } finally {
       setIsSendingCode(false);
     }
@@ -96,18 +93,15 @@ export function EmailVerificationDialog({
   };
 
   const handleVerify = async () => {
-    if (code.length !== 6) {
-      toast.error("Please enter the 6-digit verification code");
-      return;
-    }
-
     setIsVerifying(true);
     try {
-      await onVerify(newEmail.trim(), code);
+      // Firebase verifyBeforeUpdateEmail updates the auth state when the user clicks the link.
+      // So we just call onVerify which reloads the user and updates Supabase.
+      await onVerify(newEmail.trim(), "");
       toast.success("Email updated successfully");
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Invalid verification code");
+      toast.error(error.message || "Verification failed. Please ensure you clicked the link in the email.");
     } finally {
       setIsVerifying(false);
     }
@@ -115,7 +109,7 @@ export function EmailVerificationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-card border border-border">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
             <Shield className="w-5 h-5 text-primary" />
@@ -140,47 +134,53 @@ export function EmailVerificationDialog({
                   placeholder="e.g. you@company.com"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  disabled={isSendingCode || isVerifying}
-                  className="pl-9 pr-3 h-10 bg-background border-input text-foreground outline-none focus:ring-2 focus:ring-ring"
+                  disabled={isSendingCode || isVerifying || codeSent}
+                  className="pl-9 pr-3 h-10 bg-background border border-border text-foreground outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 />
               </div>
-              <Button
-                type="button"
-                onClick={handleSendCode}
-                disabled={!isValidEmail(newEmail) || timer > 0 || isSendingCode || isVerifying}
-                className="h-10 shrink-0 font-semibold cursor-pointer"
-              >
-                {isSendingCode && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
-                {timer > 0 ? `Resend (${timer}s)` : codeSent ? "Resend" : "Send Code"}
-              </Button>
+              {!codeSent && (
+                <Button
+                  type="button"
+                  onClick={handleSendLink}
+                  disabled={!isValidEmail(newEmail) || isSendingCode || isVerifying}
+                  className="h-10 shrink-0 font-semibold cursor-pointer"
+                >
+                  {isSendingCode && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                  Send Link
+                </Button>
+              )}
             </div>
           </div>
 
           {codeSent && (
-            <div className="space-y-2 border-t border-border pt-4 animate-in fade-in-50 duration-200">
-              <Label className="text-sm font-semibold text-foreground">
-                6-Digit Verification Code
-              </Label>
-              <div className="flex justify-center py-2">
-                <InputOTP
-                  maxLength={6}
-                  value={code}
-                  onChange={setCode}
-                  disabled={isVerifying}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
+            <div className="space-y-3 border-t border-border pt-4 animate-in fade-in-50 duration-200">
+              <div className="flex gap-2.5 items-start bg-primary/5 border border-primary/20 p-3.5 rounded-lg text-sm">
+                <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">Verification email sent</p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    We sent a verification link to <strong className="text-foreground">{newEmail}</strong>.
+                    Please open your email client, click that link, and then return here to complete the change.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Enter the code sent to <strong className="text-foreground">{newEmail}</strong>.
-              </p>
+              
+              <div className="flex gap-2 items-center text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-lg">
+                <Info className="w-3.5 h-3.5 shrink-0" />
+                <span>Didn't get the email? Check your spam folder or try resending.</span>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={handleSendLink}
+                  disabled={timer > 0 || isSendingCode || isVerifying}
+                  className="text-xs text-primary font-medium hover:underline p-0 h-auto cursor-pointer"
+                >
+                  {timer > 0 ? `Resend link in ${timer}s` : "Resend verification link"}
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -191,21 +191,24 @@ export function EmailVerificationDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isVerifying}
-            className="flex-1 cursor-pointer text-foreground"
+            className="flex-1 cursor-pointer text-foreground border-border hover:bg-muted"
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleVerify}
-            disabled={code.length !== 6 || isVerifying || isSendingCode}
-            className="flex-1 font-semibold cursor-pointer"
-          >
-            {isVerifying && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
-            Verify & Save
-          </Button>
+          {codeSent && (
+            <Button
+              type="button"
+              onClick={handleVerify}
+              disabled={isVerifying || isSendingCode}
+              className="flex-1 font-semibold cursor-pointer"
+            >
+              {isVerifying && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+              I've Clicked the Link
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+

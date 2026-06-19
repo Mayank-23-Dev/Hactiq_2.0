@@ -1,4 +1,4 @@
-export async function callGroqAPI(prompt: string, systemPrompt: string, apiKey: string, model: string = "llama3-70b-8192") {
+export async function callGroqAPI(prompt: string, systemPrompt: string, apiKey: string, model: string = "llama-3.3-70b-versatile") {
   if (!apiKey) throw new Error("Groq API key is missing.");
 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -46,7 +46,7 @@ export async function parseNLGoal(text: string, apiKey: string) {
 // 2. Auto-categorization
 export async function suggestCategory(title: string, apiKey: string) {
   const systemPrompt = `Categorize the following goal into exactly one of these categories: Health, Work, Personal, Learning, Other. Return ONLY the category name as a single word.`;
-  const result = await callGroqAPI(title, systemPrompt, apiKey, "mixtral-8x7b-32768");
+  const result = await callGroqAPI(title, systemPrompt, apiKey, "llama-3.1-8b-instant");
   const cleaned = result.trim().replace(/[^a-zA-Z]/g, '');
   if (["Health", "Work", "Personal", "Learning", "Other"].includes(cleaned)) return cleaned;
   return "Other";
@@ -62,13 +62,13 @@ export async function generateBriefing(recentGoals: any[], recentMetadata: any, 
 // 4. Smart Rescheduling
 export async function suggestReschedule(goalTitle: string, recentEnergy: string, apiKey: string) {
   const systemPrompt = `The user failed to complete the goal: "${goalTitle}". Their recent energy level is ${recentEnergy}. Suggest in ONE short sentence whether they should "carry forward" to today, "reprioritize", or "break down" the goal.`;
-  return await callGroqAPI(goalTitle, systemPrompt, apiKey, "mixtral-8x7b-32768");
+  return await callGroqAPI(goalTitle, systemPrompt, apiKey, "llama-3.1-8b-instant");
 }
 
 // 5. Auto-Reflection on Complete
 export async function generateReflection(goalTitle: string, apiKey: string) {
   const systemPrompt = `The user just completed the goal: "${goalTitle}". Generate a one-sentence positive reflection or insight they might have about this.`;
-  return await callGroqAPI(goalTitle, systemPrompt, apiKey, "mixtral-8x7b-32768");
+  return await callGroqAPI(goalTitle, systemPrompt, apiKey, "llama-3.1-8b-instant");
 }
 
 // 6. AI Insights in Stats
@@ -91,6 +91,6 @@ export async function decomposeGoal(goalTitle: string, apiKey: string) {
 // 10. Predictive Streak Alert
 export async function predictStreakBreak(goalsData: any[], todayEnergy: string, apiKey: string) {
   const systemPrompt = `Based on the user's historical completion data and today's energy (${todayEnergy}), output ONLY a number from 0 to 100 representing the percentage chance they will fail their goals tomorrow and break their streak. Just the number.`;
-  const result = await callGroqAPI(JSON.stringify(goalsData), systemPrompt, apiKey, "mixtral-8x7b-32768");
+  const result = await callGroqAPI(JSON.stringify(goalsData), systemPrompt, apiKey, "llama-3.1-8b-instant");
   return parseInt(result.replace(/[^0-9]/g, '')) || 0;
 }

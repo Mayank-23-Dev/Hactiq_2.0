@@ -1,88 +1,29 @@
 // src/app/components/settings/AiTab.tsx
-import { useState } from "react";
 import { useApp } from "../../store";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Label } from "@/app/components/ui/label";
-import { Input } from "@/app/components/ui/input";
 import { Switch } from "@/app/components/ui/switch";
-import { Button } from "@/app/components/ui/button";
-import { Bot, CheckCircle } from "lucide-react";
-import { toast } from "sonner";
-import { callGroqAPI } from "../../../lib/groq";
+import { Bot } from "lucide-react";
 
 export function AiTab() {
-  const { groqApiKey, setGroqApiKey, aiFeaturesConfig, toggleAiFeature } = useApp();
-  const [tempApiKey, setTempApiKey] = useState(groqApiKey);
-  const [isTesting, setIsTesting] = useState(false);
+  const { aiFeaturesConfig, toggleAiFeature } = useApp();
 
-  const handleTestConnection = async () => {
-    if (!tempApiKey) {
-      toast.error("Please enter an API key first");
-      return;
-    }
-    setIsTesting(true);
-    try {
-      await callGroqAPI("Say 'hello world'", "You are a helpful assistant.", tempApiKey);
-      toast.success("Connection successful!");
-      setGroqApiKey(tempApiKey);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to connect to Groq API");
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleSaveApiKey = () => {
-    setGroqApiKey(tempApiKey);
-    toast.success("API Key saved");
-  };
 
   return (
-    <Card className="border border-border bg-card">
-      <CardHeader>
-        <CardTitle className="text-xl font-bold tracking-tight flex items-center gap-2">
-          <Bot size={20} className="text-primary" />
-          AI Integrations
-        </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
-          Configure your AI API keys and toggle intelligent assistant features.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="p-4 border border-border rounded-xl bg-accent/10 space-y-4">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">Groq API Key</h4>
-            <p className="text-xs text-muted-foreground">
-              Enter your Groq API key to enable Llama and Mixtral-powered inference directly in your browser.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Input
-              type="password"
-              value={tempApiKey}
-              onChange={(e) => setTempApiKey(e.target.value)}
-              placeholder="gsk_..."
-              className="font-mono text-sm"
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveApiKey}>
-                Save Key
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTestConnection}
-                disabled={isTesting || !tempApiKey}
-                className="flex items-center gap-2"
-              >
-                {isTesting ? "Testing..." : <><CheckCircle size={14} /> Test Connection</>}
-              </Button>
-            </div>
-          </div>
-        </div>
+    <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-8 relative overflow-hidden">
+      <div className="flex flex-col gap-2 border-b border-border/40 pb-6">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <Bot className="text-primary w-6 h-6" /> AI Integrations
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Toggle Hactiq intelligent assistant features powered by Groq Llama and Mixtral.
+        </p>
+      </div>
 
+      <div className="space-y-8">
+
+        {/* Feature Toggles */}
         <div className="space-y-4">
-          <Label className="text-sm font-semibold block mb-2">AI Feature Toggles</Label>
+          <Label className="text-sm font-semibold text-foreground block mb-2">AI Feature Toggles</Label>
           <div className="grid gap-3">
             {[
               { id: "naturalLanguageEntry", label: "Natural Language Entry", description: "Parse unstructured text into goals using AI" },
@@ -96,7 +37,7 @@ export function AiTab() {
               { id: "goalDecomposition", label: "Goal Decomposition", description: "Break down complex goals into smaller subtasks" },
               { id: "predictiveAlert", label: "Predictive Streak Alert", description: "Warns if there's a high chance of breaking your streak tomorrow" }
             ].map((f) => (
-              <div key={f.id} className="flex items-center justify-between gap-4 p-3 border border-border rounded-lg bg-card">
+              <div key={f.id} className="flex items-center justify-between gap-4 p-4 border border-border rounded-xl bg-input-background">
                 <div className="space-y-0.5">
                   <span className="text-xs font-semibold text-foreground block">{f.label}</span>
                   <span className="text-[11px] text-muted-foreground">{f.description}</span>
@@ -104,12 +45,13 @@ export function AiTab() {
                 <Switch
                   checked={aiFeaturesConfig[f.id] ?? false}
                   onCheckedChange={(val) => toggleAiFeature(f.id, val)}
+                  className="data-[state=checked]:bg-primary"
                 />
               </div>
             ))}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,16 +1,18 @@
 // src/app/components/Layout.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
-  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight
+  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight, Bot, Send, Trash2, Loader2
 } from "lucide-react";
 import { useApp } from "../store";
+import { useAuth } from "../../contexts/AuthContext";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Particles } from "./ui/particles";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./ui/tooltip";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { navItems } from "../../config/navigation";
+import { callGroqAPI } from "../../lib/groq";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,7 +20,8 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title = "Dashboard" }: LayoutProps) {
-  const { theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead } = useApp();
+  const { theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead, groqApiKey } = useApp();
+  const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -37,6 +40,103 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+
+  // AI Coach state
+  const [isCoachOpen, setIsCoachOpen] = useState(() => {
+    return localStorage.getItem("hactiq_coach_open") === "true";
+  });
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>(() => {
+    try {
+      const stored = localStorage.getItem("hactiq_coach_messages");
+      return stored ? JSON.parse(stored) : [
+        { role: "assistant", content: "Hi! I'm Hactiq, your AI Productivity Coach. What are we aiming to achieve today? I can help you break down goals, plan schedules, or resolve blockers." }
+      ];
+    } catch {
+      return [
+        { role: "assistant", content: "Hi! I'm Hactiq, your AI Productivity Coach. What are we aiming to achieve today? I can help you break down goals, plan schedules, or resolve blockers." }
+      ];
+    }
+  });
+  const [inputMessage, setInputMessage] = useState("");
+  const [isCoachLoading, setIsCoachLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem("hactiq_coach_open", String(isCoachOpen));
+  }, [isCoachOpen]);
+
+  useEffect(() => {
+    localStorage.setItem("hactiq_coach_messages", JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const handleSendCoachMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputMessage.trim() || isCoachLoading) return;
+
+    const userMsg = inputMessage.trim();
+    setInputMessage("");
+    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    setIsCoachLoading(true);
+
+    try {
+      if (!groqApiKey) {
+        throw new Error("Groq API Key is not configured. Please check your settings.");
+      }
+
+      const systemPrompt = `You are Hactiq's AI Productivity Coach, an elite personal coach designed to help users structure their goals, analyze productivity blockers, plan schedules, and stay focused. Keep your answers concise (under 3-4 sentences), encouraging, and highly actionable.`;
+      
+      const historyContext = messages.slice(-6).map(m => `${m.role === "user" ? "User" : "Coach"}: ${m.content}`).join("\n");
+      const fullPrompt = `${historyContext}\nUser: ${userMsg}\nCoach:`;
+
+      const response = await callGroqAPI(fullPrompt, systemPrompt, groqApiKey);
+      setMessages(prev => [...prev, { role: "assistant", content: response }]);
+    } catch (err: any) {
+      console.error(err);
+      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${err.message || "Failed to contact Groq API."}` }]);
+    } finally {
+      setIsCoachLoading(false);
+    }
+  };
+
+  const handleClearCoach = () => {
+    setMessages([
+      { role: "assistant", content: "Chat cleared. Let me know how else I can help you today!" }
+    ]);
+  };
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    
+    // Clear user session in Firebase + Supabase bindings
+    await logout();
+    
+    // Clear local storage data caches
+    const cacheKeys = [
+      "hactiq_current_user",
+      "gt_user_profile",
+      "gt_boards",
+      "gt_columns",
+      "gt_tasks",
+      "gt_activity",
+      "gt_goals",
+      "gt_streak_goals",
+      "gt_templates",
+      "gt_metadata",
+      "gt_activities",
+      "hactiq_coach_messages",
+      "hactiq_coach_open"
+    ];
+    cacheKeys.forEach(k => localStorage.removeItem(k));
+    
+    // Redirect to landing page
+    navigate("/");
+  };
 
   const isActive = (path: string) => location.pathname === path;
   const unreadCount = useMemo(() => activities.filter(a => !a.read).length, [activities]);
@@ -90,54 +190,115 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
                 />
               );
             })}
-          </nav>
 
-          {/* User */}
-          <div className="p-2 border-t border-border relative">
+            {/* Global AI Coach Sidebar Trigger */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className={`flex items-center gap-2 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors ${isCollapsed ? "justify-center" : ""}`}
+                  onClick={() => setIsCoachOpen(prev => !prev)}
+                  className={`group flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative cursor-pointer ${
+                    isCollapsed ? "justify-center" : ""
+                  } ${
+                    isCoachOpen 
+                      ? "bg-primary/10 text-primary border-l-2 border-primary pl-2.5"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  }`}
+                  aria-label="Toggle AI Coach"
                 >
-                  <Avatar className="w-7 h-7 shrink-0">
-                    {userProfile.avatarUrl ? (
-                      <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
-                    ) : null}
-                    <AvatarFallback className="text-[10px] font-semibold bg-muted dark:bg-gray-800 text-foreground">
-                      {userProfile.avatar}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!isCollapsed && (
-                    <>
-                      <div className="flex-1 text-left overflow-hidden">
-                        <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
-                        <p className="text-muted-foreground truncate" style={{ fontSize: 11 }}>{userProfile.email}</p>
-                      </div>
-                      <ChevronDown size={14} className="text-muted-foreground" />
-                    </>
-                  )}
+                  <div className="relative flex items-center shrink-0">
+                    <Bot size={16} />
+                  </div>
+                  {!isCollapsed && <span className="flex-1 truncate">AI Coach</span>}
                 </button>
               </TooltipTrigger>
               {isCollapsed && (
                 <TooltipContent side="right">
-                  {userProfile.name}
+                  AI Coach
                 </TooltipContent>
               )}
             </Tooltip>
-            {userMenuOpen && (
-              <div className="absolute bottom-full left-2 right-2 mb-1 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
-                <button 
+          </nav>
+
+          {/* User Profile Section */}
+          <div className="p-2 border-t border-border relative">
+            {isCollapsed ? (
+              // Collapsed: Avatar only, click toggles side popover
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setUserMenuOpen(!userMenuOpen)}
+                      className="flex items-center justify-center w-full py-2 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer"
+                      aria-label="User Profile Actions"
+                    >
+                      <Avatar className="w-8 h-8 shrink-0">
+                        {userProfile.avatarUrl ? (
+                          <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
+                        ) : null}
+                        <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
+                          {userProfile.avatar}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {userProfile.name} (Click for options)
+                  </TooltipContent>
+                </Tooltip>
+
+                {userMenuOpen && (
+                  <div className="absolute bottom-full left-14 mb-1 w-40 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
+                    <button 
+                      type="button"
+                      onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left text-foreground cursor-pointer"
+                    >
+                      <User size={14} /> Profile
+                    </button>
+                    <div className="my-1 border-t border-border" />
+                    <button 
+                      type="button" 
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left cursor-pointer font-medium"
+                    >
+                      <LogOut size={14} /> Log out
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Expanded: Full profile summary with Logout button directly available
+              <div className="flex items-center gap-2 w-full px-2 py-2 rounded-md bg-sidebar-accent/30 border border-border/40">
+                <button
                   type="button"
-                  onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                  onClick={() => navigate("/settings")}
+                  className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
+                  title="Go to settings"
                 >
-                  <User size={14} /> Profile
+                  <Avatar className="w-8 h-8 shrink-0">
+                    {userProfile.avatarUrl ? (
+                      <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
+                    ) : null}
+                    <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
+                      {userProfile.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
+                    <p className="text-muted-foreground truncate" style={{ fontSize: 10 }}>{userProfile.email}</p>
+                  </div>
                 </button>
-                <div className="my-1 border-t border-border" />
-                <button type="button" className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left">
-                  <LogOut size={14} /> Log out
+                
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
+                  title="Log out"
+                  aria-label="Log out"
+                >
+                  <LogOut size={15} />
                 </button>
               </div>
             )}
@@ -161,7 +322,7 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
                   <button onClick={() => setSearchOpen(false)}><X size={14} className="text-muted-foreground" /></button>
                 </div>
               ) : (
-                <button onClick={() => setSearchOpen(true)} className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                <button onClick={() => setSearchOpen(true)} className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors cursor-pointer">
                   <Search size={16} />
                 </button>
               )}
@@ -169,21 +330,10 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
 
             {/* Notifications */}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setNotifOpen(!notifOpen);
-                  if (!notifOpen) {
-                    markAllActivitiesAsRead();
-                  }
-                }}
-                className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground relative"
-              >
+              <button onClick={() => { setNotifOpen(!notifOpen); markAllActivitiesAsRead(); }} className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors relative cursor-pointer">
                 <Bell size={16} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1.5 px-1 min-w-4 h-4 text-[9px] font-bold bg-primary text-primary-foreground flex items-center justify-center rounded-full leading-none">
-                    {unreadCount}
-                  </span>
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
                 )}
               </button>
               {notifOpen && (
@@ -222,6 +372,102 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
           </main>
         </div>
       </div>
+
+      {/* Floating AI Coach Trigger Button (Intercom-like) */}
+      {!isCoachOpen && (
+        <button
+          onClick={() => setIsCoachOpen(true)}
+          className="fixed bottom-6 right-6 z-40 p-4 bg-primary text-primary-foreground rounded-full shadow-2xl hover:scale-105 transition-all duration-200 cursor-pointer flex items-center justify-center border border-primary/20 hover:bg-primary/95"
+          aria-label="Open AI Coach"
+        >
+          <Bot size={22} className="animate-pulse" />
+        </button>
+      )}
+
+      {/* Sliding AI Coach Panel */}
+      {isCoachOpen && (
+        <div className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] bg-card border-l border-border backdrop-blur-md shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
+          {/* Header */}
+          <div className="p-4 border-b border-border flex items-center justify-between bg-muted/35">
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-primary" />
+              <div>
+                <h3 className="font-semibold text-foreground text-sm leading-none">AI Productivity Coach</h3>
+                <span className="text-[10px] text-green-500 font-medium flex items-center gap-1 mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping inline-block" />
+                  Active (Llama 3.3)
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleClearCoach}
+                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title="Clear conversation"
+              >
+                <Trash2 size={14} />
+              </button>
+              <button
+                onClick={() => setIsCoachOpen(false)}
+                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title="Close panel"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((m, idx) => (
+              <div
+                key={idx}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                    m.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                      : "bg-muted text-foreground rounded-tl-none border border-border/40"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                </div>
+              </div>
+            ))}
+            {isCoachLoading && (
+              <div className="flex justify-start">
+                <div className="bg-muted text-foreground rounded-2xl rounded-tl-none border border-border/40 px-4 py-2.5 text-sm max-w-[85%] flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground">Thinking...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Form */}
+          <form onSubmit={handleSendCoachMessage} className="p-4 border-t border-border bg-muted/10">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Ask your coach..."
+                disabled={isCoachLoading}
+                className="w-full h-11 pl-4 pr-12 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || isCoachLoading}
+                className="absolute right-2 p-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+              >
+                <Send size={14} />
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </TooltipProvider>
   );
 }
@@ -232,12 +478,12 @@ function NavItem({ to, icon, label, active, collapsed, badge }: {
   const link = (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+      className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
         collapsed ? "justify-center" : ""
       } ${
         active
-          ? "bg-sidebar-accent text-sidebar-primary font-medium"
-          : "text-sidebar-foreground hover:bg-sidebar-accent"
+          ? "bg-primary/10 text-primary border-l-2 border-primary pl-2.5"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
       }`}
     >
       <div className="relative flex items-center shrink-0">
@@ -270,4 +516,3 @@ function NavItem({ to, icon, label, active, collapsed, badge }: {
 
   return link;
 }
-

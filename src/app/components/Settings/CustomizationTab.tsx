@@ -1,12 +1,8 @@
 // src/app/components/settings/CustomizationTab.tsx
 import React from "react";
 import { useApp } from "../../store";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Label } from "@/app/components/ui/label";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
-import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Sliders } from "lucide-react";
 
 interface ConfigItem {
   id: string;
@@ -18,29 +14,32 @@ export function CustomizationTab() {
   const { customConfig, updateCustomConfig } = useApp();
 
   return (
-    <Card className="border border-border bg-card">
-      <CardHeader>
-        <CardTitle className="text-xl font-bold tracking-tight">Customization Settings</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
+    <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-10 relative overflow-hidden">
+      <div className="flex flex-col gap-2 border-b border-border/40 pb-6">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <Sliders className="text-primary w-6 h-6" /> Customization Settings
+        </h2>
+        <p className="text-sm text-muted-foreground">
           Configure categories, priorities, moods, energy levels, stages, and template personas.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-10 pb-8">
+        </p>
+      </div>
+
+      <div className="space-y-10">
         <ConfigSection
           title="Goal Categories"
           description="Manage the categories you assign to your goals."
           items={customConfig.categories}
           onUpdate={(items) => updateCustomConfig({ categories: items })}
           renderItem={(item, onChange, onDelete) => (
-            <div className="flex gap-2 w-full items-center">
-              <Input
+            <div className="flex gap-3 w-full items-center">
+              <input
                 value={item.name}
                 onChange={(e) => onChange({ ...item, name: e.target.value })}
-                className="flex-grow"
+                className="flex-grow h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
-              <Button onClick={onDelete} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0">
+              <button onClick={onDelete} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0 cursor-pointer">
                 <Trash2 size={16} />
-              </Button>
+              </button>
             </div>
           )}
           newItemFactory={() => ({
@@ -56,30 +55,26 @@ export function CustomizationTab() {
           items={customConfig.priorities}
           onUpdate={(items) => updateCustomConfig({ priorities: items })}
           renderItem={(item, onChange, onDelete) => (
-            <div className="flex gap-2 w-full items-center">
-              <Input
+            <div className="flex gap-3 w-full items-center">
+              <input
                 value={item.name}
                 onChange={(e) => onChange({ ...item, name: e.target.value })}
-                className="flex-grow"
+                className="flex-grow h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
-              <Select
+              <select
                 value={item.color}
-                onValueChange={(val) => onChange({ ...item, color: val })}
+                onChange={(e) => onChange({ ...item, color: e.target.value })}
+                className="w-32 h-10 px-2 bg-input-background border border-border rounded-lg text-sm text-foreground outline-none focus:border-primary transition-all"
               >
-                <SelectTrigger className="w-32 shrink-0">
-                  <SelectValue placeholder="Color" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["red", "orange", "yellow", "green", "blue", "indigo", "purple", "pink", "gray"].map((c) => (
-                    <SelectItem key={c} value={c}>
-                      <span className="capitalize">{c}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={onDelete} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0">
+                {["red", "orange", "yellow", "green", "blue", "indigo", "purple", "pink", "gray"].map((c) => (
+                  <option key={c} value={c} className="bg-card text-foreground">
+                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <button onClick={onDelete} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0 cursor-pointer">
                 <Trash2 size={16} />
-              </Button>
+              </button>
             </div>
           )}
           newItemFactory={() => ({
@@ -96,15 +91,15 @@ export function CustomizationTab() {
           items={customConfig.moods}
           onUpdate={(items) => updateCustomConfig({ moods: items })}
           renderItem={(item, onChange, onDelete) => (
-            <div className="flex gap-2 w-full items-center">
-              <Input
+            <div className="flex gap-3 w-full items-center">
+              <input
                 value={item.name}
                 onChange={(e) => onChange({ ...item, name: e.target.value })}
-                className="flex-grow"
+                className="flex-grow h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
-              <Button onClick={onDelete} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0">
+              <button onClick={onDelete} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0 cursor-pointer">
                 <Trash2 size={16} />
-              </Button>
+              </button>
             </div>
           )}
           newItemFactory={() => ({
@@ -120,15 +115,15 @@ export function CustomizationTab() {
           items={customConfig.energies}
           onUpdate={(items) => updateCustomConfig({ energies: items })}
           renderItem={(item, onChange, onDelete) => (
-            <div className="flex gap-2 w-full items-center">
-              <Input
+            <div className="flex gap-3 w-full items-center">
+              <input
                 value={item.name}
                 onChange={(e) => onChange({ ...item, name: e.target.value })}
-                className="flex-grow"
+                className="flex-grow h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
-              <Button onClick={onDelete} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0">
+              <button onClick={onDelete} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0 cursor-pointer">
                 <Trash2 size={16} />
-              </Button>
+              </button>
             </div>
           )}
           newItemFactory={() => ({
@@ -144,15 +139,15 @@ export function CustomizationTab() {
           items={customConfig.boardStages}
           onUpdate={(items) => updateCustomConfig({ boardStages: items })}
           renderItem={(item, onChange, onDelete) => (
-            <div className="flex gap-2 w-full items-center">
-              <Input
+            <div className="flex gap-3 w-full items-center">
+              <input
                 value={item.name}
                 onChange={(e) => onChange({ ...item, name: e.target.value })}
-                className="flex-grow"
+                className="flex-grow h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               />
-              <Button onClick={onDelete} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0">
+              <button onClick={onDelete} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0 cursor-pointer">
                 <Trash2 size={16} />
-              </Button>
+              </button>
             </div>
           )}
           newItemFactory={() => {
@@ -165,7 +160,7 @@ export function CustomizationTab() {
           }}
         />
 
-        <div className="space-y-4 pt-4 border-t border-border">
+        <div className="space-y-4 pt-8 border-t border-border">
           <div>
             <h3 className="text-lg font-bold text-foreground">Persona Templates</h3>
             <p className="text-sm text-muted-foreground">
@@ -174,7 +169,7 @@ export function CustomizationTab() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {customConfig.personaTemplates.map((t) => (
-              <div key={t.id} className="p-4 border border-border rounded-xl bg-accent/10 space-y-3 relative group">
+              <div key={t.id} className="p-5 border border-border rounded-xl bg-input-background space-y-3.5 relative group">
                 <div className="flex justify-between items-start">
                   <input
                     value={t.name}
@@ -184,19 +179,17 @@ export function CustomizationTab() {
                       );
                       updateCustomConfig({ personaTemplates: newList });
                     }}
-                    className="font-bold bg-transparent border-none outline-none focus:ring-0 p-0 text-foreground"
+                    className="font-bold bg-transparent border-none outline-none focus:ring-0 p-0 text-foreground text-base"
                   />
-                  <Button
+                  <button
                     onClick={() => {
                       const newList = customConfig.personaTemplates.filter((x) => x.id !== t.id);
                       updateCustomConfig({ personaTemplates: newList });
                     }}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition"
+                    className="h-8 w-8 flex items-center justify-center text-destructive hover:bg-destructive/10 rounded-lg opacity-0 group-hover:opacity-100 transition cursor-pointer"
                   >
                     <Trash2 size={14} />
-                  </Button>
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
@@ -209,11 +202,11 @@ export function CustomizationTab() {
                         );
                         updateCustomConfig({ personaTemplates: newList });
                       }}
-                      className="w-full px-2 py-1 bg-background border border-border rounded text-[10px] outline-none text-foreground"
+                      className="w-full px-2 py-1.5 bg-background border border-border rounded text-[10px] outline-none text-foreground focus:border-primary"
                     >
-                      <option value="" className="bg-background text-foreground">None</option>
+                      <option value="" className="bg-card text-foreground">None</option>
                       {customConfig.categories.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-background text-foreground">
+                        <option key={c.id} value={c.id} className="bg-card text-foreground">
                           {c.name}
                         </option>
                       ))}
@@ -229,11 +222,11 @@ export function CustomizationTab() {
                         );
                         updateCustomConfig({ personaTemplates: newList });
                       }}
-                      className="w-full px-2 py-1 bg-background border border-border rounded text-[10px] outline-none text-foreground"
+                      className="w-full px-2 py-1.5 bg-background border border-border rounded text-[10px] outline-none text-foreground focus:border-primary"
                     >
-                      <option value="" className="bg-background text-foreground">None</option>
+                      <option value="" className="bg-card text-foreground">None</option>
                       {customConfig.priorities.map((p) => (
-                        <option key={p.id} value={p.id} className="bg-background text-foreground">
+                        <option key={p.id} value={p.id} className="bg-card text-foreground">
                           {p.name}
                         </option>
                       ))}
@@ -242,7 +235,7 @@ export function CustomizationTab() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">Sample Title</Label>
-                  <Input
+                  <input
                     value={t.sampleGoalTitle}
                     onChange={(e) => {
                       const newList = customConfig.personaTemplates.map((x) =>
@@ -251,13 +244,12 @@ export function CustomizationTab() {
                       updateCustomConfig({ personaTemplates: newList });
                     }}
                     placeholder="e.g. Write 500 words"
-                    className="h-8 text-xs"
+                    className="w-full h-8 px-3.5 bg-background border border-border rounded text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                   />
                 </div>
               </div>
             ))}
-            <Button
-              variant="outline"
+            <button
               onClick={() => {
                 const newItem = {
                   id: `persona-${Date.now()}`,
@@ -268,15 +260,15 @@ export function CustomizationTab() {
                 };
                 updateCustomConfig({ personaTemplates: [...customConfig.personaTemplates, newItem] });
               }}
-              className="h-full border-2 border-dashed border-border py-8 text-muted-foreground flex flex-col justify-center gap-2 hover:bg-accent/50"
+              className="h-full border border-dashed border-border py-8 text-muted-foreground flex flex-col items-center justify-center gap-2 hover:bg-input-background hover:text-foreground rounded-xl transition duration-150 cursor-pointer"
             >
               <Plus size={20} />
-              Add Persona Template
-            </Button>
+              <span className="text-xs font-semibold">Add Persona Template</span>
+            </button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -320,28 +312,24 @@ function ConfigSection<T extends { id: string; order: number }>({
         <h4 className="text-base font-semibold text-foreground">{title}</h4>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {sortedItems.map((item, idx) => (
           <div key={item.id} className="flex items-center gap-2 group">
             <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={() => move(item.id, "up")}
                 disabled={idx === 0}
-                className="h-6 w-6 p-0 hover:bg-accent disabled:opacity-30"
+                className="h-6 w-6 p-0 flex items-center justify-center hover:bg-input-background text-gray-400 disabled:opacity-30 rounded cursor-pointer"
               >
                 <ChevronUp size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+              </button>
+              <button
                 onClick={() => move(item.id, "down")}
                 disabled={idx === sortedItems.length - 1}
-                className="h-6 w-6 p-0 hover:bg-accent disabled:opacity-30"
+                className="h-6 w-6 p-0 flex items-center justify-center hover:bg-input-background text-gray-400 disabled:opacity-30 rounded cursor-pointer"
               >
                 <ChevronDown size={14} />
-              </Button>
+              </button>
             </div>
             {renderItem(
               item,
@@ -350,13 +338,12 @@ function ConfigSection<T extends { id: string; order: number }>({
             )}
           </div>
         ))}
-        <Button
-          variant="link"
+        <button
           onClick={() => onUpdate([...items, newItemFactory()])}
-          className="flex items-center gap-1 text-xs text-primary font-bold hover:underline pl-8 h-auto py-1"
+          className="flex items-center gap-1 text-xs text-primary font-bold hover:underline pl-8 h-auto py-1.5 cursor-pointer"
         >
           <Plus size={14} /> Add New
-        </Button>
+        </button>
       </div>
     </div>
   );
