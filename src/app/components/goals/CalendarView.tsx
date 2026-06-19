@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { Layout } from "../Layout";
 import { useApp, Goal } from "../../store";
 import { ChevronLeft, ChevronRight, X, Edit2 } from "lucide-react";
@@ -93,7 +94,7 @@ export function CalendarView() {
       </div>
 
       {/* Day Details Modal */}
-      {selectedDay && (
+      {selectedDay && createPortal(
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedDay(null)}>
           <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6 border border-border" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
@@ -135,7 +136,8 @@ export function CalendarView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       <EditGoalDialog 
         goal={editingGoal} 

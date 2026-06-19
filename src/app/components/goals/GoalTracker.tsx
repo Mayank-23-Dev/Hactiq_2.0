@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Layout } from "../Layout";
 import { useApp, Goal, Priority } from "../../store";
 import { 
   PlusCircle, Wand, Activity, Zap, Trash2, Edit2, 
   CheckCircle, Circle, StickyNote, ArrowRight,
-  Bot, Mic, MicOff, AlertTriangle, Sparkles, Repeat
+  Bot, Mic, MicOff, AlertTriangle, Sparkles, Repeat,
+  ArrowLeft, CheckSquare, Square, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
@@ -49,6 +51,8 @@ export function GoalTracker() {
   };
   
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [checkedPickerItems, setCheckedPickerItems] = useState<Record<string, boolean>>({});
   const [isParsing, setIsParsing] = useState(false);
   const [isCategorizing, setIsCategorizing] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -172,14 +176,16 @@ export function GoalTracker() {
         const similarCompleted = goals.filter(g => g.title.toLowerCase() === goal.title.toLowerCase() && g.completed).length;
         // Since toggleGoal updates state async, add 1 to count the current completion
         if (similarCompleted + 1 === 3) {
-          const tExists = templates.some(t => t.title.toLowerCase() === goal.title.toLowerCase());
+          const tExists = templates.some(t => t.name.toLowerCase() === goal.title.toLowerCase());
           if (!tExists) {
             toast("Recurring goal detected!", {
               description: `You've completed "${goal.title}" 3 times. Create a template?`,
               action: {
                 label: "Create Template",
                 onClick: () => {
-                  addTemplate({ title: goal.title, category: goal.category, priority: goal.priority, notes: "" });
+                  addTemplate(goal.title, "Automatically generated from your recurring tasks.", [
+                    { title: goal.title, category: goal.category, priority: goal.priority, notes: "" }
+                  ]);
                   toast.success("Template created!");
                 }
               }
@@ -207,26 +213,51 @@ export function GoalTracker() {
     toast.success("Goal added!");
   };
 
-  const applyTemplate = (templateId: string) => {
-    const t = templates.find(x => x.id === templateId);
-    if (t) {
-      setTitle(t.title);
-      setCategory(t.category);
-      setPriority(t.priority);
-      setNotes(t.notes);
-      setShowTemplatePicker(false);
+  const handleOpenTemplatePicker = () => {
+    setSelectedTemplateId(null);
+    setCheckedPickerItems({});
+    setShowTemplatePicker(true);
+  };
+
+  const handleImportSelectedGoals = () => {
+    if (!selectedTemplateId) return;
+    const t = templates.find(x => x.id === selectedTemplateId);
+    if (!t || !t.items) return;
+
+    const itemsToAdd = t.items.filter(item => checkedPickerItems[item.id] !== false);
+    if (itemsToAdd.length === 0) {
+      toast.error("No goals selected to add");
+      return;
     }
+
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    itemsToAdd.forEach(item => {
+      addGoal({
+        title: item.title,
+        category: item.category,
+        priority: item.priority,
+        notes: item.notes,
+        completed: false,
+        date: todayStr,
+        status: "todo"
+      });
+    });
+
+    toast.success(`Added ${itemsToAdd.length} goal(s) to Today`);
+    setShowTemplatePicker(false);
+    setSelectedTemplateId(null);
+    setCheckedPickerItems({});
   };
 
   const completedCount = todaysGoals.filter(g => g.completed).length;
   const rate = todaysGoals.length > 0 ? Math.round((completedCount / todaysGoals.length) * 100) : 0;
 
   return (
-    <Layout title="Today's Goals">
+    <Layout title="Tasks">
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-foreground">Today's Dashboard</h1>
+            <h1 className="text-3xl font-extrabold text-foreground">Tasks</h1>
             <p className="text-muted-foreground font-medium">{format(new Date(), "EEEE, MMMM do, yyyy")}</p>
           </div>
           <div className="bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
@@ -379,7 +410,7 @@ export function GoalTracker() {
                   </button>
                   <button 
                     type="button" 
-                    onClick={() => setShowTemplatePicker(true)}
+                    onClick={handleOpenTemplatePicker}
                     className="bg-secondary hover:bg-secondary/80 text-secondary-foreground p-2 rounded-lg transition flex items-center justify-center h-10 w-10 shrink-0"
                     title="Load from Template"
                   >
@@ -480,35 +511,150 @@ export function GoalTracker() {
       </div>
 
       {/* Template Picker Modal */}
-      {showTemplatePicker && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-          <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6 border border-border">
-            <h2 className="text-xl font-bold mb-4">Select Template</h2>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {templates.length === 0 ? (
-                <p className="text-muted-foreground italic text-center py-4">No templates available. Create one in Templates view.</p>
-              ) : (
-                templates.map(t => (
+      {showTemplatePicker && (() => {
+        if (!selectedTemplateId) {
+          return createPortal(
+            <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+              <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6 border border-border flex flex-col max-h-[85vh]">
+                <div className="flex justify-between items-center mb-4 shrink-0">
+                  <h2 className="text-xl font-bold text-foreground">Select Template</h2>
                   <button 
-                    key={t.id} 
-                    onClick={() => applyTemplate(t.id)}
-                    className="w-full text-left p-3 hover:bg-accent border border-border rounded-lg transition"
+                    onClick={() => setShowTemplatePicker(false)}
+                    className="cursor-pointer hover:opacity-75"
                   >
-                    <div className="font-semibold">{t.title}</div>
-                    <div className="text-xs text-muted-foreground">{t.category} | {t.priority}</div>
+                    <X size={20} />
                   </button>
-                ))
-              )}
-            </div>
-            <button 
-              onClick={() => setShowTemplatePicker(false)}
-              className="mt-4 w-full py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-lg transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+                </div>
+                
+                <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+                  {templates.length === 0 ? (
+                    <p className="text-muted-foreground italic text-center py-8">
+                      No templates available. Create one in Templates view.
+                    </p>
+                  ) : (
+                    templates.map(t => (
+                      <button 
+                        key={t.id} 
+                        onClick={() => {
+                          setSelectedTemplateId(t.id);
+                          const initialChecks: Record<string, boolean> = {};
+                          (t.items || []).forEach(item => {
+                            initialChecks[item.id] = true;
+                          });
+                          setCheckedPickerItems(initialChecks);
+                        }}
+                        className="w-full text-left p-4 hover:bg-accent border border-border rounded-xl transition flex flex-col gap-1 cursor-pointer"
+                      >
+                        <div className="font-extrabold text-foreground">{t.name}</div>
+                        {t.description && (
+                          <div className="text-xs text-muted-foreground line-clamp-1">{t.description}</div>
+                        )}
+                        <div className="text-[10px] text-primary/80 font-bold bg-primary/5 border border-primary/10 rounded px-1.5 py-0.5 mt-2 self-start uppercase tracking-wider">
+                          {(t.items || []).length} {(t.items || []).length === 1 ? "goal" : "goals"}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+                <button 
+                  onClick={() => setShowTemplatePicker(false)}
+                  className="mt-4 w-full py-2.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-lg transition cursor-pointer font-semibold text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>,
+            document.body
+          );
+        } else {
+          const t = templates.find(x => x.id === selectedTemplateId);
+          if (!t) {
+            setSelectedTemplateId(null);
+            return null;
+          }
+
+          return createPortal(
+            <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+              <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6 border border-border flex flex-col max-h-[85vh]">
+                <div className="flex items-center gap-3 mb-2 shrink-0">
+                  <button 
+                    onClick={() => setSelectedTemplateId(null)}
+                    className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition cursor-pointer"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">{t.name}</h2>
+                    <p className="text-xs text-muted-foreground">Select the goals you want to import</p>
+                  </div>
+                </div>
+
+                {t.description && (
+                  <p className="text-xs text-muted-foreground mb-4 bg-muted/40 p-2.5 rounded-lg border border-border/40 shrink-0">
+                    {t.description}
+                  </p>
+                )}
+                
+                <div className="space-y-2 overflow-y-auto pr-1 flex-1">
+                  {(t.items || []).map(item => {
+                    const isChecked = checkedPickerItems[item.id] !== false;
+                    return (
+                      <div 
+                        key={item.id} 
+                        onClick={() => {
+                          setCheckedPickerItems(prev => ({
+                            ...prev,
+                            [item.id]: !isChecked
+                          }));
+                        }}
+                        className="flex items-start gap-3 p-3 bg-muted/20 hover:bg-muted/40 rounded-xl border border-border/40 transition cursor-pointer"
+                      >
+                        <div className="mt-0.5 text-muted-foreground hover:text-foreground">
+                          {isChecked ? (
+                            <CheckSquare size={16} className="text-primary fill-primary/10" />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-semibold text-foreground ${!isChecked ? "line-through opacity-50" : ""}`}>
+                            {item.title}
+                          </p>
+                          <div className="flex gap-2 items-center mt-1 flex-wrap">
+                            <PriorityBadge priorityId={item.priority as any} customConfig={customConfig} />
+                            <span className="text-[9px] px-1 bg-background text-muted-foreground rounded uppercase font-semibold border border-border/80">
+                              {item.category}
+                            </span>
+                          </div>
+                          {item.notes && (
+                            <p className="text-[10px] text-muted-foreground italic mt-0.5 line-clamp-1">{item.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3 mt-4 shrink-0">
+                  <button 
+                    onClick={() => setSelectedTemplateId(null)}
+                    className="flex-1 py-2.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-lg transition cursor-pointer font-semibold text-xs"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    onClick={handleImportSelectedGoals}
+                    className="flex-grow-[2] py-2.5 bg-primary text-primary-foreground hover:bg-primary/95 rounded-lg transition cursor-pointer font-bold text-xs"
+                  >
+                    Add Selected Goals
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          );
+        }
+      })()}
       <EditGoalDialog 
         goal={editingGoal} 
         open={!!editingGoal} 

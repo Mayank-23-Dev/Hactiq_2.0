@@ -34,12 +34,21 @@ export interface StreakGoal {
   createdAt: string;
 }
 
-export interface GoalTemplate {
+export interface GoalTemplateItem {
   id: string;
+  template_id: string;
   title: string;
   category: string;
   priority: string;
   notes: string;
+}
+
+export interface GoalTemplate {
+  id: string;
+  user_id?: string;
+  name: string;
+  description?: string;
+  items?: GoalTemplateItem[];
 }
 
 export interface DayMetadata {
@@ -270,8 +279,22 @@ const initialGoals: Goal[] = [
 ];
 
 const initialTemplates: GoalTemplate[] = [
-  { id: "gt1", title: "Meditation", category: "Health", priority: "medium", notes: "15 minutes mindfulness" },
-  { id: "gt2", title: "Inbox Zero", category: "Work", priority: "high", notes: "Clear all emails" }
+  {
+    id: "gt1",
+    name: "Meditation & Mind",
+    description: "Daily mindfulness routines",
+    items: [
+      { id: "gti1", template_id: "gt1", title: "Meditation", category: "Health", priority: "medium", notes: "15 minutes mindfulness" }
+    ]
+  },
+  {
+    id: "gt2",
+    name: "Inbox Zero",
+    description: "Clear work communications",
+    items: [
+      { id: "gti2", template_id: "gt2", title: "Inbox Zero", category: "Work", priority: "high", notes: "Clear all emails" }
+    ]
+  }
 ];
 
 const initialMetadata: Record<string, DayMetadata> = {
@@ -320,7 +343,8 @@ export interface AppContextValue extends AppState {
   regenerateAllStreakGoals: () => void;
   generateMissingStreakInstances: (streak: StreakGoal, currentGoals: Goal[]) => Goal[];
   // Templates & Metadata
-  addTemplate: (template: Omit<GoalTemplate, "id">) => void;
+  addTemplate: (name: string, description: string, items: { title: string; category: string; priority: string; notes: string }[]) => void;
+  updateTemplate: (id: string, name: string, description: string, items: { title: string; category: string; priority: string; notes: string }[]) => void;
   deleteTemplate: (id: string) => void;
   setDayMetadata: (date: string, metadata: Partial<DayMetadata>) => void;
   // AI Config
@@ -439,7 +463,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           supabase.from("boards").select("*").eq("user_id", userId),
           supabase.from("goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
           supabase.from("streak_goals").select("*").eq("user_id", userId),
-          supabase.from("goal_templates").select("*").eq("user_id", userId),
+          supabase.from("goal_templates").select("*, goal_template_items(*)").eq("user_id", userId),
           supabase.from("day_metadata").select("*").eq("user_id", userId),
           supabase.from("activities").select("*").eq("user_id", userId).order("timestamp", { ascending: false }).limit(100)
         ]);
@@ -549,10 +573,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (fetchedTemplates) {
           setTemplates(fetchedTemplates.map(t => ({
             id: t.id,
-            title: t.title,
-            category: t.category || "Other",
-            priority: t.priority || "medium",
-            notes: t.notes || ""
+            name: t.name,
+            description: t.description || "",
+            items: (t.goal_template_items || []).map((item: any) => ({
+              id: item.id,
+              template_id: item.template_id,
+              title: item.title,
+              category: item.category || "Other",
+              priority: item.priority || "medium",
+              notes: item.notes || ""
+            }))
           })));
         }
 
@@ -1079,21 +1109,107 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [addActivity, isAuthenticated]);
 
-  const addTemplate = useCallback((template: Omit<GoalTemplate, "id">) => {
+  const addTemplate = useCallback((
+    name: string,
+    description: string,
+    items: { title: string; category: string; priority: string; notes: string }[]
+  ) => {
     const userId = auth.currentUser?.uid;
-    const newId = `gt${Date.now()}`;
-    setTemplates(prev => [{ id: newId, ...template }, ...prev]);
+    const templateId = `gt${Date.now()}`;
+    const newItems: GoalTemplateItem[] = items.map((item, index) => ({
+      id: `gti${Date.now()}-${index}`,
+      template_id: templateId,
+      title: item.title,
+      category: item.category,
+      priority: item.priority,
+      notes: item.notes
+    }));
+
+    const newTemplate: GoalTemplate = {
+      id: templateId,
+      user_id: userId,
+      name,
+      description,
+      items: newItems
+    };
+
+    setTemplates(prev => [newTemplate, ...prev]);
 
     if (userId && isAuthenticated) {
       supabase.from("goal_templates").insert({
-        id: newId,
+        id: templateId,
         user_id: userId,
-        title: template.title,
-        category: template.category,
-        priority: template.priority,
-        notes: template.notes
+        name,
+        description
       }).then(({ error }) => {
-        if (error) console.error("Error inserting template into database:", error);
+        if (error) {
+          console.error("Error inserting template into database:", error);
+          return;
+        }
+
+        const dbItems = newItems.map(item => ({
+          id: item.id,
+          template_id: item.template_id,
+          title: item.title,
+          category: item.category,
+          priority: item.priority,
+          notes: item.notes
+        }));
+
+        supabase.from("goal_template_items").insert(dbItems).then(({ error: itemsError }) => {
+          if (itemsError) console.error("Error inserting template items:", itemsError);
+        });
+      });
+    }
+  }, [isAuthenticated]);
+
+  const updateTemplate = useCallback((
+    id: string,
+    name: string,
+    description: string,
+    items: { title: string; category: string; priority: string; notes: string }[]
+  ) => {
+    const userId = auth.currentUser?.uid;
+    const newItems: GoalTemplateItem[] = items.map((item, index) => ({
+      id: `gti${Date.now()}-${index}`,
+      template_id: id,
+      title: item.title,
+      category: item.category,
+      priority: item.priority,
+      notes: item.notes
+    }));
+
+    setTemplates(prev => prev.map(t => t.id === id ? { ...t, name, description, items: newItems } : t));
+
+    if (userId && isAuthenticated) {
+      supabase.from("goal_templates").update({
+        name,
+        description
+      }).eq("id", id).then(({ error }) => {
+        if (error) {
+          console.error("Error updating template container:", error);
+          return;
+        }
+
+        supabase.from("goal_template_items").delete().eq("template_id", id).then(({ error: deleteError }) => {
+          if (deleteError) {
+            console.error("Error deleting old template items:", deleteError);
+            return;
+          }
+
+          const dbItems = newItems.map(item => ({
+            id: item.id,
+            template_id: item.template_id,
+            title: item.title,
+            category: item.category,
+            priority: item.priority,
+            notes: item.notes
+          }));
+
+          supabase.from("goal_template_items").insert(dbItems).then(({ error: insertError }) => {
+            if (insertError) console.error("Error inserting updated template items:", insertError);
+          });
+        });
       });
     }
   }, [isAuthenticated]);
@@ -1304,7 +1420,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createBoard, deleteBoard, createTask, updateTask, deleteTask, moveTask,
       updateColumn, deleteColumn, setTheme, getAvatarColor, avatarColors: avatarColorMap,
       goals, streakGoals, templates, dailyMetadata, groqApiKey, aiFeaturesConfig, customConfig,
-      addGoal, updateGoal, deleteGoal, toggleGoal, carryForwardGoal, addTemplate, deleteTemplate, setDayMetadata,
+      addGoal, updateGoal, deleteGoal, toggleGoal, carryForwardGoal, addTemplate, updateTemplate, deleteTemplate, setDayMetadata,
       addStreakGoal, updateStreakGoal, deleteStreakGoal, regenerateAllStreakGoals, generateMissingStreakInstances,
       setGroqApiKey, toggleAiFeature, updateCustomConfig,
       userProfile, updateUserProfile,

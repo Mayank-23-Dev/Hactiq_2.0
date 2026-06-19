@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Layout } from "../Layout";
 import { useApp, Priority, StreakGoal } from "../../store";
 import { Plus, Trash2, Calendar, Target, Play, Pause, Repeat } from "lucide-react";
@@ -77,21 +78,21 @@ export function StreakGoals() {
   const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
 
   return (
-    <Layout title="Streak Goals">
+    <Layout title="Habits">
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-extrabold text-foreground">Streak Goals</h1>
+          <h1 className="text-3xl font-extrabold text-foreground">Habits</h1>
           <button 
             onClick={() => setShowAddModal(true)}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded-lg transition flex items-center gap-2"
           >
-            <Plus size={20} /> New Streak
+            <Plus size={20} /> New Habit
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {streakGoals.length === 0 ? (
-            <div className="col-span-full text-center py-20 text-muted-foreground italic">No streak goals created.</div>
+            <div className="col-span-full text-center py-20 text-muted-foreground italic">No habits created.</div>
           ) : (
             streakGoals.map(sg => {
               const { completed, total, percentage } = getProgress(sg.id);
@@ -142,7 +143,7 @@ export function StreakGoals() {
         </div>
       </div>
 
-      {showAddModal && (
+      {showAddModal && createPortal(
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
           <div className="bg-card rounded-xl shadow-2xl max-w-lg w-full p-6 border border-border max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">New Streak Goal</h2>
@@ -258,7 +259,8 @@ export function StreakGoals() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </Layout>
   );

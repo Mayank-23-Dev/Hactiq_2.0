@@ -141,6 +141,15 @@ CREATE TABLE streak_goals (
 CREATE TABLE goal_templates (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+-- 11b. Goal Template Items Table (Goals inside templates)
+CREATE TABLE goal_template_items (
+    id TEXT PRIMARY KEY,
+    template_id TEXT NOT NULL REFERENCES goal_templates(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     category TEXT DEFAULT 'Other',
     priority TEXT DEFAULT 'medium',
@@ -181,6 +190,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE streak_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goal_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goal_template_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE day_metadata ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 
@@ -255,6 +265,23 @@ CREATE POLICY "Users can manage their own streak goals" ON streak_goals
 CREATE POLICY "Users can manage their own templates" ON goal_templates
     FOR ALL USING (user_id = get_current_user_id()) WITH CHECK (user_id = get_current_user_id());
 
+-- goal_template_items policies
+CREATE POLICY "Users can manage their own template items" ON goal_template_items
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM goal_templates
+            WHERE goal_templates.id = goal_template_items.template_id
+              AND goal_templates.user_id = get_current_user_id()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM goal_templates
+            WHERE goal_templates.id = goal_template_items.template_id
+              AND goal_templates.user_id = get_current_user_id()
+        )
+    );
+
 -- day_metadata policies
 CREATE POLICY "Users can manage their own day metadata" ON day_metadata
     FOR ALL USING (user_id = get_current_user_id()) WITH CHECK (user_id = get_current_user_id());
@@ -276,4 +303,5 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_user_date ON goals(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_streak_goals_user ON streak_goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goal_templates_user ON goal_templates(user_id);
+CREATE INDEX IF NOT EXISTS idx_goal_template_items_template ON goal_template_items(template_id);
 CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id);

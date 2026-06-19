@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Trash2, Plus, Check, Calendar, Tag, User, Paperclip, MessageSquare, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useApp, Task, Priority } from "../store";
@@ -74,8 +75,8 @@ export function TaskDetail({ task, onClose }: TaskDetailProps) {
   const doneCount = subtasks.filter(s => s.done).length;
   const pCfg = PRIORITY_CONFIG[priority];
 
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4" onClick={onClose}>
       <div
         className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
@@ -285,6 +286,7 @@ export function TaskDetail({ task, onClose }: TaskDetailProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

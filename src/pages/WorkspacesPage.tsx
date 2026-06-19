@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { Plus, Trash2, Calendar, CheckSquare, X, Grid3x3 } from "lucide-react";
 import { toast } from "sonner";
@@ -116,8 +117,8 @@ export default function WorkspacesPage() {
       </div>
 
       {/* Create Board Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+      {showCreate && createPortal(
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5 border-b border-border pb-3">
               <h3 className="font-bold text-card-foreground text-lg">Create New Workspace</h3>
@@ -178,7 +179,8 @@ export default function WorkspacesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </Layout>
   );

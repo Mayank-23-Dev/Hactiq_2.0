@@ -497,7 +497,7 @@ export default function LandingPage() {
               An Execution Environment Engine.
             </h2>
             <p className="text-neutral-600 dark:text-neutral-400 font-light text-base leading-relaxed mb-8">
-              We believe a productivity environment shouldn't require sending your thoughts to external analytics clusters. Hactiq runs client-side with minimal dependencies, compiling actions locally in memory.
+              We believe a productivity environment shouldn't require sending your thoughts to external analytics clusters. Hactiq provides a fast, privacy-focused workspace synced securely to the cloud with minimal external dependencies.
             </p>
 
             <div className="space-y-6">
@@ -507,9 +507,9 @@ export default function LandingPage() {
                   <Database className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-black dark:text-white mb-1">Local-First Storage</h4>
+                  <h4 className="text-sm font-bold text-black dark:text-white mb-1">Cloud-Synced Persistence</h4>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
-                    All goals, streaking variables, and boards are compiled directly into the client's LocalStorage memory. No latency. Complete offline usability.
+                    All goals, streak records, and workspace boards are persisted securely in the cloud using Supabase (Postgres) with real-time updates.
                   </p>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export default function LandingPage() {
                 <div>
                   <h4 className="text-sm font-bold text-black dark:text-white mb-1">Zero Tracker Telemetry</h4>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400 font-light leading-relaxed">
-                    We maintain absolute privacy. Zero advertising pixels, zero telemetry agents, and zero usage analytics packages are packed into the bundle.
+                    We maintain absolute privacy. Zero telemetry agents, tracking scripts, or usage analytics packages are bundled in the application.
                   </p>
                 </div>
               </div>
@@ -548,18 +548,18 @@ export default function LandingPage() {
             <p className="text-neutral-400 dark:text-neutral-500">----------------------------------------------------</p>
             
             <div className="space-y-1">
-              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:07]</span> STATE : Initializing goal database (Local)...</p>
-              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:07]</span> STATE : Active connection key found: <span className="text-green-600 dark:text-green-400">GROQ_ENCRYPTED</span></p>
-              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:08]</span> RENDER: Canvas active: 140 particles | DPR: 1.25</p>
-              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:08]</span> MEMORY: Loaded 3 workspace boards in 12ms</p>
-              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:09]</span> CACHE : 100% hits on streak goals queries</p>
+              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:07]</span> STATE : Initializing connection to database cluster...</p>
+              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:07]</span> STATE : Connected to Supabase PostgreSQL cluster</p>
+              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:08]</span> RENDER: React v18 render pipeline active | DPR: 1.25</p>
+              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:08]</span> DATA  : Hydrated user workspace boards in 15ms</p>
+              <p><span className="text-neutral-400 dark:text-neutral-500">[04:03:09]</span> CACHE : Local user session cache active</p>
               <p className="text-black dark:text-white mt-4 font-semibold">WORKSPACE CONSTANTS</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-neutral-500 pt-1">
-                <p>db_driver:      <span className="text-black dark:text-white">localStorage</span></p>
-                <p>render_pipeline: <span className="text-black dark:text-white">react-dom (canvas)</span></p>
+                <p>db_driver:      <span className="text-black dark:text-white">supabase-postgres</span></p>
+                <p>render_pipeline: <span className="text-black dark:text-white">react-dom (vdom)</span></p>
                 <p>router:          <span className="text-black dark:text-white">react-router-v7</span></p>
                 <p>style_system:    <span className="text-black dark:text-white">tailwind-css-v4</span></p>
-                <p>auth_method:     <span className="text-black dark:text-white">decentralized-context</span></p>
+                <p>auth_method:     <span className="text-black dark:text-white">firebase-oauth</span></p>
                 <p>analytics:       <span className="text-black dark:text-white">recharts-svg</span></p>
               </div>
             </div>

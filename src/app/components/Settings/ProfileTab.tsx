@@ -40,18 +40,23 @@ export function ProfileTab() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Name cannot be empty");
       return;
     }
-    updateUserProfile({
-      name: name.trim(),
-      email: email.trim(),
-      bio: bio.trim(),
-      avatarUrl
-    });
-    toast.success("Profile saved successfully");
+    try {
+      await updateUserProfile({
+        name: name.trim(),
+        email: email.trim(),
+        bio: bio.trim(),
+        avatarUrl
+      });
+      toast.success("Profile saved successfully");
+    } catch (err: any) {
+      console.error("Failed to save profile:", err);
+      toast.error(err.message || "Failed to save profile changes.");
+    }
   };
 
   const handleSendCode = async (newEmail: string) => {

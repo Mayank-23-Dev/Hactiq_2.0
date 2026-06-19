@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { Plus, MoreHorizontal, Calendar, CheckSquare, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ export function Dashboard() {
         {/* Welcome Block */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-6">
           <div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white mb-2">
+            <h2 className="text-3xl font-extrabold tracking-tight text-foreground mb-2">
               {getGreeting()}, {userProfile.name}
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -62,7 +63,7 @@ export function Dashboard() {
           {/* Boards grid */}
           <div className="lg:col-span-3 space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-white tracking-tight">Your Boards</h3>
+              <h3 className="text-xl font-bold text-foreground tracking-tight">Your Boards</h3>
               <button
                 onClick={() => setShowCreate(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
@@ -80,14 +81,14 @@ export function Dashboard() {
                   <div
                     key={board.id}
                     onClick={() => navigate(`/board/${board.id}`)}
-                    className="group relative glass-panel rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:border-primary/30 transition-all duration-250 flex flex-col justify-between min-h-[180px] shadow-xl"
+                    className="group relative bg-card/70 border border-border backdrop-blur-md rounded-2xl p-6 cursor-pointer hover:scale-[1.02] hover:border-primary/30 transition-all duration-250 flex flex-col justify-between min-h-[180px] shadow-xl"
                   >
                     {/* Top line with Accent color */}
                     <div className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl" style={{ backgroundColor: board.color }} />
 
                     <div className="space-y-3 mt-2">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-base font-bold text-white tracking-tight group-hover:text-primary transition-colors leading-snug">
+                        <h4 className="text-base font-bold text-foreground tracking-tight group-hover:text-primary transition-colors leading-snug">
                           {board.name}
                         </h4>
                         <button
@@ -107,7 +108,7 @@ export function Dashboard() {
                     <div className="space-y-4 mt-6">
                       {count > 0 && (
                         <div className="space-y-1">
-                          <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div className="h-1 bg-muted rounded-full overflow-hidden">
                             <div className="h-full rounded-full transition-all" style={{ width: `${(done / count) * 100}%`, backgroundColor: board.color }} />
                           </div>
                           <p className="text-[10px] text-muted-foreground text-right font-medium">
@@ -116,7 +117,7 @@ export function Dashboard() {
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-white/[0.04] pt-3">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border pt-3">
                         <span className="flex items-center gap-1.5"><CheckSquare size={13} className="text-primary" /> {count} tasks</span>
                         <span className="flex items-center gap-1.5"><Calendar size={13} /> {board.lastModified}</span>
                       </div>
@@ -128,9 +129,9 @@ export function Dashboard() {
               {/* Create new board block */}
               <button
                 onClick={() => setShowCreate(true)}
-                className="border border-dashed border-white/10 hover:border-primary/50 hover:bg-white/[0.01] rounded-2xl p-6 text-muted-foreground hover:text-white transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer"
+                className="border border-dashed border-border hover:border-primary/50 hover:bg-accent/50 rounded-2xl p-6 text-muted-foreground hover:text-foreground transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[180px] cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full bg-white/[0.02] border border-white/10 flex items-center justify-center group-hover:border-primary/30 transition-all">
+                <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center group-hover:border-primary/30 transition-all">
                   <Plus size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
                 <span className="text-xs font-semibold">Create new board</span>
@@ -139,47 +140,47 @@ export function Dashboard() {
           </div>
 
           {/* Activity feed */}
-          <div className="lg:col-span-1 glass-panel rounded-2xl p-6 shadow-2xl space-y-4">
+          <div className="lg:col-span-1 bg-card/70 border border-border backdrop-blur-md rounded-2xl p-6 shadow-2xl space-y-4">
             <RecentActivity limit={6} showSeeAll={true} />
           </div>
         </div>
       </div>
 
       {/* Create Board Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
-          <div className="glass-panel border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+      {showCreate && createPortal(
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-white tracking-tight">Create New Board</h3>
-              <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-white p-1 rounded-lg hover:bg-white/[0.04] transition cursor-pointer">
+              <h3 className="text-lg font-bold text-foreground tracking-tight">Create New Board</h3>
+              <button onClick={() => setShowCreate(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-accent transition cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <div className="space-y-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-white uppercase tracking-wider block">Board name</label>
+                <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">Board name</label>
                 <input
                   autoFocus
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleCreate()}
                   placeholder="e.g. Q4 Roadmap"
-                  className="w-full px-3.5 py-2.5 bg-white/[0.02] border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full px-3.5 py-2.5 bg-muted/40 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-white uppercase tracking-wider block">Description <span className="text-muted-foreground font-normal lowercase">(optional)</span></label>
+                <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">Description <span className="text-muted-foreground font-normal lowercase">(optional)</span></label>
                 <textarea
                   value={newDesc}
                   onChange={e => setNewDesc(e.target.value)}
                   placeholder="What's this board for?"
                   rows={2}
-                  className="w-full px-3.5 py-2.5 bg-white/[0.02] border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
+                  className="w-full px-3.5 py-2.5 bg-muted/40 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-white uppercase tracking-wider block">Color Accent</label>
+                <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">Color Accent</label>
                 <div className="flex gap-2.5 flex-wrap">
                   {COLORS.map(c => (
                     <button
@@ -194,7 +195,7 @@ export function Dashboard() {
             </div>
 
             <div className="flex gap-3 mt-8">
-              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 text-xs font-semibold border border-white/10 hover:bg-white/[0.04] text-white rounded-lg transition-colors cursor-pointer">
+              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 text-xs font-semibold border border-border hover:bg-accent text-foreground rounded-lg transition-colors cursor-pointer">
                 Cancel
               </button>
               <button
@@ -206,7 +207,8 @@ export function Dashboard() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </Layout>
   );

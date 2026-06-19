@@ -135,8 +135,8 @@ export function CustomizationTab() {
         />
 
         <ConfigSection
-          title="Goal Board Stages"
-          description="Define columns for your Kanban Goal Board."
+          title="Kanban Board Stages"
+          description="Define columns for your Kanban Board."
           items={customConfig.boardStages}
           onUpdate={(items) => updateCustomConfig({ boardStages: items })}
           renderItem={(item, onChange, onDelete) => (

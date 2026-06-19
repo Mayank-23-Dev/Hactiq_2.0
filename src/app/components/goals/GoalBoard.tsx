@@ -245,12 +245,12 @@ export function GoalBoard() {
   const activeGoal = activeId ? goals.find(g => g.id === activeId) : null;
 
   return (
-    <Layout title="Goal Board">
+    <Layout title="Kanban Board">
       <div className="p-4 sm:p-6 w-full max-w-full lg:px-8 xl:max-w-[1600px] mx-auto h-[calc(100vh-4rem)] flex flex-col">
         {/* Header and Integrated Date Selector */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-5 shrink-0">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Goal Board</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Kanban Board</h1>
             <p className="text-sm text-muted-foreground mt-0.5 font-medium">Spacious board dashboard matching Hactiq aesthetic.</p>
           </div>
           

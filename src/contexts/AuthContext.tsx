@@ -131,12 +131,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         bio: "Product Designer & Developer"
       };
 
-      // Check if the profile exists to differentiate between create/update events in logs
+      // Check if the profile exists
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("*")
         .eq("id", firebaseUser.uid)
         .single();
+
+      if (existingProfile) {
+        console.log("Profile loaded successfully for ID:", firebaseUser.uid);
+        return existingProfile;
+      }
 
       // Upsert profile data
       const { data: profile, error: upsertError } = await supabase
@@ -150,10 +155,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw upsertError;
       }
 
-      if (existingProfile) {
-        console.log("Profile updated successfully for ID:", firebaseUser.uid);
-      } else {
-        console.log("Profile created successfully for ID:", firebaseUser.uid);
+      console.log("Profile created successfully for ID:", firebaseUser.uid);
+
+      // Check if user already has templates to prevent duplicate seeding
+      const { data: existingTemplates } = await supabase
+        .from("goal_templates")
+        .select("id")
+        .eq("user_id", firebaseUser.uid)
+        .limit(1);
+
+      if (!existingTemplates || existingTemplates.length === 0) {
+        // Seed default multi-goal starter templates for new user
+        const t1Id = `seed-essentials-${firebaseUser.uid}`;
+        const t2Id = `seed-quickwins-${firebaseUser.uid}`;
+        const t3Id = `seed-focusblock-${firebaseUser.uid}`;
+
+        const starterTemplates = [
+          { id: t1Id, user_id: firebaseUser.uid, name: "Daily Essentials", description: "Core habits to anchor your day" },
+          { id: t2Id, user_id: firebaseUser.uid, name: "Quick Wins", description: "Small tasks that build momentum" },
+          { id: t3Id, user_id: firebaseUser.uid, name: "Focus Block", description: "Deep work and recovery" }
+        ];
+
+        const starterItems = [
+          // Daily Essentials
+          { id: `seed-ess1-${firebaseUser.uid}`, template_id: t1Id, title: "Plan top 3 priorities for today", category: "Work", priority: "high", notes: "" },
+          { id: `seed-ess2-${firebaseUser.uid}`, template_id: t1Id, title: "Drink 8 glasses of water", category: "Health", priority: "medium", notes: "" },
+          { id: `seed-ess3-${firebaseUser.uid}`, template_id: t1Id, title: "10-minute evening reflection", category: "Personal", priority: "low", notes: "" },
+          
+          // Quick Wins
+          { id: `seed-qw1-${firebaseUser.uid}`, template_id: t2Id, title: "Clear inbox to zero", category: "Work", priority: "medium", notes: "" },
+          { id: `seed-qw2-${firebaseUser.uid}`, template_id: t2Id, title: "Tidy workspace for 5 minutes", category: "Personal", priority: "low", notes: "" },
+          { id: `seed-qw3-${firebaseUser.uid}`, template_id: t2Id, title: "Reply to one pending message", category: "Work", priority: "medium", notes: "" },
+
+          // Focus Block
+          { id: `seed-fb1-${firebaseUser.uid}`, template_id: t3Id, title: "Deep work session — 45 minutes, no distractions", category: "Work", priority: "high", notes: "" },
+          { id: `seed-fb2-${firebaseUser.uid}`, template_id: t3Id, title: "Take a 10-minute walk break", category: "Health", priority: "medium", notes: "" },
+          { id: `seed-fb3-${firebaseUser.uid}`, template_id: t3Id, title: "Review tomorrow's calendar", category: "Work", priority: "low", notes: "" }
+        ];
+
+        try {
+          const { error: seedError } = await supabase.from("goal_templates").insert(starterTemplates);
+          if (seedError) {
+            console.error("Failed to seed starter templates:", seedError.message);
+          } else {
+            const { error: itemsError } = await supabase.from("goal_template_items").insert(starterItems);
+            if (itemsError) {
+              console.error("Failed to seed starter template items:", itemsError.message);
+            } else {
+              console.log("Starter templates seeded successfully for user:", firebaseUser.uid);
+            }
+          }
+        } catch (err) {
+          console.error("Error during template seeding:", err);
+        }
       }
 
       // Ensure user_preferences row exists for the UID
@@ -349,6 +403,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from("profiles")
         .update({
           name: updates.name,
+          email: updates.email,
           bio: updates.bio,
           avatar_url: updates.avatarUrl,
           avatar: avatar

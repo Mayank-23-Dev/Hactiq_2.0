@@ -15,14 +15,14 @@ import {
 
 export const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { label: "Task", icon: CalendarCheck2, path: "/today" },
-  { label: "Kanban", icon: Kanban, path: "/goal-board" },
+  { label: "Tasks", icon: CalendarCheck2, path: "/today" },
+  { label: "Kanban Board", icon: Kanban, path: "/goal-board" },
   { label: "Habits", icon: Flame, path: "/streak-goals" },
-  { label: "Review", icon: ArrowLeft, path: "/yesterday" },
+  { label: "Yesterday Review", icon: ArrowLeft, path: "/yesterday" },
   { label: "Calendar", icon: Calendar, path: "/calendar" },
   { label: "Insights", icon: BarChart3, path: "/stats" },
   { label: "Archive", icon: Archive, path: "/archive" },
-  { label: "Templates", icon: FileText, path: "/templates" },
+  { label: "Goal Templates", icon: FileText, path: "/templates" },
   { label: "Workspaces", icon: Grid3x3, path: "/boards" },
   { label: "Activities", icon: Bell, path: "/activities" },
   { label: "Settings", icon: Settings, path: "/settings" },
