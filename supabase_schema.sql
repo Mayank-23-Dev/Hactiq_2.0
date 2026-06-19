@@ -201,7 +201,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- profiles policies
 CREATE POLICY "Users can manage their own profiles" ON profiles
-    FOR ALL USING (id = get_current_user_id()) WITH CHECK (id = get_current_user_id());
+    FOR ALL USING ((auth.jwt() ->> 'sub') = id) WITH CHECK ((auth.jwt() ->> 'sub') = id);
 
 -- workspaces policies
 CREATE POLICY "Users can manage their own workspaces" ON workspaces
