@@ -14,6 +14,7 @@ import { formatDistanceToNow, parseISO } from "date-fns";
 import { navItems } from "../../config/navigation";
 import { callGroqAPI } from "../../lib/groq";
 import { useClickOutside } from "../../hooks/useClickOutside";
+import ReactMarkdown from "react-markdown";
 
 interface SidebarInnerProps {
   isCollapsed: boolean;
@@ -278,8 +279,8 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
 - Total goals completed: ${completedGoals.length}`;
   }, [goals, streakGoals]);
 
-  const handleSendCoachMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendCoachMessage = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
     if (!inputMessage.trim() || isCoachLoading) return;
 
     const userMsg = inputMessage.trim();
@@ -311,7 +312,7 @@ I can help with:
 Please ask something related to improving your habits or productivity.
 
 2. Do NOT answer, explain, or assist with off-topic queries under any circumstances.
-3. For allowed topics, be friendly, motivational, direct, practical, action-oriented, and keep responses concise (under 3 sentences). Refer to their goal progress context if relevant. Never roleplay or hallucinate.`;
+3. For allowed topics, be friendly, motivational, direct, practical, action-oriented, and keep responses concise (under 3-4 sentences). Format multi-step advice, lists, or suggestions as numbered or bulleted markdown lists, and use bold formatting (**text**) for key terms to ensure scannability. Refer to their goal progress context if relevant. Never roleplay or hallucinate.`;
       
       const historyContext = messages.slice(-6).map(m => `${m.role === "user" ? "User" : "Coach"}: ${m.content}`).join("\n");
       const fullPrompt = `${historyContext}\nUser: ${userMsg}\nCoach:`;
@@ -368,6 +369,13 @@ Please ask something related to improving your habits or productivity.
 
   const isActive = (path: string) => location.pathname === path;
   const unreadCount = useMemo(() => activities.filter(a => !a.read).length, [activities]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendCoachMessage(e);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -547,22 +555,38 @@ Please ask something related to improving your habits or productivity.
             {messages.map((m, idx) => (
               <div
                 key={idx}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-150`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm border transition-all duration-200 ${
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-tr-none"
-                      : "bg-muted text-foreground rounded-tl-none border border-border/40"
+                      ? "bg-primary text-primary-foreground border-primary rounded-br-sm shadow-md"
+                      : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700/50 text-foreground rounded-bl-sm shadow-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                  {m.role === "user" ? (
+                    <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed space-y-2">
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                          strong: ({ children }) => <strong className="font-semibold text-zinc-900 dark:text-white">{children}</strong>,
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
             {isCoachLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted text-foreground rounded-2xl rounded-tl-none border border-border/40 px-4 py-2.5 text-sm max-w-[85%] flex items-center gap-2">
+              <div className="flex justify-start animate-in fade-in duration-100">
+                <div className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/50 text-foreground rounded-2xl rounded-bl-sm px-4 py-3 text-sm max-w-[85%] flex items-center gap-2.5 shadow-sm">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                   <span className="text-xs text-muted-foreground">Thinking...</span>
                 </div>
@@ -573,19 +597,20 @@ Please ask something related to improving your habits or productivity.
 
           {/* Input Form */}
           <form onSubmit={handleSendCoachMessage} className="p-4 border-t border-border bg-muted/10">
-            <div className="relative flex items-center">
-              <input
-                type="text"
+            <div className="relative flex items-end gap-2">
+              <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Ask your coach..."
                 disabled={isCoachLoading}
-                className="w-full h-11 pl-4 pr-12 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+                rows={1}
+                className="w-full min-h-[44px] max-h-28 py-3 pl-4 pr-12 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-60 resize-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               />
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isCoachLoading}
-                className="absolute right-2 p-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
+                className="absolute right-2 bottom-2 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 active:scale-95 transition-all disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center"
               >
                 <Send size={14} />
               </button>
