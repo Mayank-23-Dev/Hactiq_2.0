@@ -232,3 +232,36 @@
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Custom styling for native date picker inputs to remove browser blue colors */
+input[type="date"] {
+  color-scheme: light dark;
+}
+
+input[type="date"]:focus-visible,
+input[type="date"]:focus,
+input[type="date"]:active {
+  outline: none !important;
+  border-color: var(--foreground) !important;
+  box-shadow: 0 0 0 1px var(--foreground) !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(var(--calendar-indicator-invert, 0));
+  opacity: 0.6;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+:root {
+  --calendar-indicator-invert: 0;
+}
+
+.dark {
+  --calendar-indicator-invert: 1;
+}
+

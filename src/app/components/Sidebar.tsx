@@ -106,13 +106,13 @@ export function Sidebar() {
             );
           })}
 
-          {/* AI Coach Trigger in Sidebar */}
+          {/* Hactiq Coach Trigger in Sidebar */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={() => {
-                  // Toggle AI Coach panel by writing to localstorage and triggering layout updates
+                  // Toggle Hactiq Coach panel by writing to localstorage and triggering layout updates
                   const prev = localStorage.getItem("hactiq_coach_open") === "true";
                   localStorage.setItem("hactiq_coach_open", String(!prev));
                   window.dispatchEvent(new Event("storage"));
@@ -120,17 +120,17 @@ export function Sidebar() {
                 className={`group flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative cursor-pointer ${
                   isCollapsed ? "justify-center" : ""
                 } text-muted-foreground hover:text-foreground hover:bg-muted/40`}
-                aria-label="Toggle AI Coach"
+                aria-label="Toggle Hactiq Coach"
               >
                 <div className="relative flex items-center shrink-0">
                   <Bot size={16} />
                 </div>
-                {!isCollapsed && <span className="flex-1 truncate">AI Coach</span>}
+                {!isCollapsed && <span className="flex-1 truncate">Hactiq Coach</span>}
               </button>
             </TooltipTrigger>
             {isCollapsed && (
               <TooltipContent side="right">
-                AI Coach
+                Hactiq Coach
               </TooltipContent>
             )}
           </Tooltip>

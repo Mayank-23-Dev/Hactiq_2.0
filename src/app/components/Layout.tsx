@@ -20,7 +20,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title = "Dashboard" }: LayoutProps) {
-  const { theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead, groqApiKey } = useApp();
+  const { theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead, groqApiKey, goals, streakGoals } = useApp();
   const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,11 +49,11 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
     try {
       const stored = localStorage.getItem("hactiq_coach_messages");
       return stored ? JSON.parse(stored) : [
-        { role: "assistant", content: "Hi! I'm Hactiq, your AI Productivity Coach. What are we aiming to achieve today? I can help you break down goals, plan schedules, or resolve blockers." }
+        { role: "assistant", content: "Hi! I'm Hactiq Coach, your dedicated habit and productivity assistant. What are we working on improving today?" }
       ];
     } catch {
       return [
-        { role: "assistant", content: "Hi! I'm Hactiq, your AI Productivity Coach. What are we aiming to achieve today? I can help you break down goals, plan schedules, or resolve blockers." }
+        { role: "assistant", content: "Hi! I'm Hactiq Coach, your dedicated habit and productivity assistant. What are we working on improving today?" }
       ];
     }
   });
@@ -75,6 +75,21 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
     }
   }, [messages]);
 
+  // Get user goals & streaks context to personalize advice
+  const userContextPrompt = useMemo(() => {
+    if (!goals || goals.length === 0) return "No active or completed goals yet.";
+    
+    const activeGoals = goals.filter(g => !g.completed);
+    const completedGoals = goals.filter(g => g.completed);
+    const activeStreaks = streakGoals ? streakGoals.filter(s => s.active) : [];
+    
+    return `User Profile Progress Context:
+- Active goals: ${activeGoals.slice(0, 5).map(g => g.title).join(", ") || "None"}
+- Completed goals: ${completedGoals.slice(0, 5).map(g => g.title).join(", ") || "None"}
+- Streak habits currently active: ${activeStreaks.map(s => s.title).join(", ") || "None"}
+- Total goals completed: ${completedGoals.length}`;
+  }, [goals, streakGoals]);
+
   const handleSendCoachMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isCoachLoading) return;
@@ -89,7 +104,26 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
         throw new Error("Groq API Key is not configured. Please check your settings.");
       }
 
-      const systemPrompt = `You are Hactiq's AI Productivity Coach, an elite personal coach designed to help users structure their goals, analyze productivity blockers, plan schedules, and stay focused. Keep your answers concise (under 3-4 sentences), encouraging, and highly actionable.`;
+      const systemPrompt = `You are Hactiq Coach, a dedicated Habit & Productivity Coach. You ONLY help with: Habits, Productivity, Focus, Consistency, Goal tracking, Daily routines, Time management, Self-improvement, and Personal discipline.
+
+Here is the current user progress context to personalize your advice:
+${userContextPrompt}
+
+CRITICAL RULES:
+1. If the user asks about ANY unrelated topics (including coding, programming, web development, politics, current news, general knowledge, math, science, history, movies, music, or general Q&A), you MUST ignore their question and reply EXACTLY with the text below, verbatim, and NOTHING else:
+I'm Hactiq Coach.
+
+I can help with:
+ Habits
+ Productivity
+ Focus
+ Goals
+ Personal growth
+
+Please ask something related to improving your habits or productivity.
+
+2. Do NOT answer, explain, or assist with off-topic queries under any circumstances.
+3. For allowed topics, be friendly, motivational, direct, practical, action-oriented, and keep responses concise (under 3 sentences). Refer to their goal progress context if relevant. Never roleplay or hallucinate.`;
       
       const historyContext = messages.slice(-6).map(m => `${m.role === "user" ? "User" : "Coach"}: ${m.content}`).join("\n");
       const fullPrompt = `${historyContext}\nUser: ${userMsg}\nCoach:`;
@@ -97,8 +131,14 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
       const response = await callGroqAPI(fullPrompt, systemPrompt, groqApiKey);
       setMessages(prev => [...prev, { role: "assistant", content: response }]);
     } catch (err: any) {
-      console.error(err);
-      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${err.message || "Failed to contact Groq API."}` }]);
+      console.error("Hactiq Coach API Error:", err);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Hactiq Coach is temporarily unavailable. Please try again shortly."
+        }
+      ]);
     } finally {
       setIsCoachLoading(false);
     }
@@ -191,7 +231,7 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
               );
             })}
 
-            {/* Global AI Coach Sidebar Trigger */}
+            {/* Global Hactiq Coach Sidebar Trigger */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -204,17 +244,17 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
                       ? "bg-primary/10 text-primary border-l-2 border-primary pl-2.5"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   }`}
-                  aria-label="Toggle AI Coach"
+                  aria-label="Toggle Hactiq Coach"
                 >
                   <div className="relative flex items-center shrink-0">
                     <Bot size={16} />
                   </div>
-                  {!isCollapsed && <span className="flex-1 truncate">AI Coach</span>}
+                  {!isCollapsed && <span className="flex-1 truncate">Hactiq Coach</span>}
                 </button>
               </TooltipTrigger>
               {isCollapsed && (
                 <TooltipContent side="right">
-                  AI Coach
+                  Hactiq Coach
                 </TooltipContent>
               )}
             </Tooltip>
@@ -373,18 +413,18 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
         </div>
       </div>
 
-      {/* Floating AI Coach Trigger Button (Intercom-like) */}
+      {/* Floating Hactiq Coach Trigger Button (Intercom-like) */}
       {!isCoachOpen && (
         <button
           onClick={() => setIsCoachOpen(true)}
           className="fixed bottom-6 right-6 z-40 p-4 bg-primary text-primary-foreground rounded-full shadow-2xl hover:scale-105 transition-all duration-200 cursor-pointer flex items-center justify-center border border-primary/20 hover:bg-primary/95"
-          aria-label="Open AI Coach"
+          aria-label="Open Hactiq Coach"
         >
           <Bot size={22} className="animate-pulse" />
         </button>
       )}
 
-      {/* Sliding AI Coach Panel */}
+      {/* Sliding Hactiq Coach Panel */}
       {isCoachOpen && (
         <div className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] bg-card border-l border-border backdrop-blur-md shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
           {/* Header */}
@@ -392,11 +432,8 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5 text-primary" />
               <div>
-                <h3 className="font-semibold text-foreground text-sm leading-none">AI Productivity Coach</h3>
-                <span className="text-[10px] text-green-500 font-medium flex items-center gap-1 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping inline-block" />
-                  Active (Llama 3.3)
-                </span>
+                <h3 className="font-semibold text-foreground text-sm leading-none">Hactiq Coach</h3>
+                <p className="text-[10px] text-muted-foreground mt-1">Habits • Productivity • Goals</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">

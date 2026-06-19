@@ -42,98 +42,138 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem("hactiq_current_user") || localStorage.getItem("gt_user_profile");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const stored = localStorage.getItem("hactiq_current_user") || localStorage.getItem("gt_user_profile");
+      return !stored;
+    } catch {
+      return true;
+    }
+  });
+
+  // Safety timeout: prevent stuck/infinite loading screen if Firebase/Supabase queries hang
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        console.warn("Auth loading safety timeout triggered. Forcing loading state to resolve.");
+        setIsLoading(false);
+      }, 5000); // 5 seconds safety timeout
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+
+  // Helper function to upsert profile info securely in Supabase public.profiles
+  const syncUserProfile = async (firebaseUser: any) => {
+    try {
+      const name = firebaseUser.displayName ?? "User";
+      const email = firebaseUser.email ?? "";
+      const avatarUrl = firebaseUser.photoURL ?? null;
+      const fallbackAvatar = firebaseUser.displayName?.charAt(0).toUpperCase() || "U";
+
+      const profilePayload = {
+        id: firebaseUser.uid,
+        name,
+        email,
+        avatar_url: avatarUrl,
+        avatar: fallbackAvatar,
+        bio: "Product Designer & Developer"
+      };
+
+      // Check if the profile exists to differentiate between create/update events in logs
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", firebaseUser.uid)
+        .single();
+
+      // Upsert profile data
+      const { data: profile, error: upsertError } = await supabase
+        .from("profiles")
+        .upsert(profilePayload, { onConflict: "id" })
+        .select()
+        .single();
+
+      if (upsertError) {
+        console.error("Profile sync failed for UID:", firebaseUser.uid, upsertError.message);
+        throw upsertError;
+      }
+
+      if (existingProfile) {
+        console.log("Profile updated successfully for ID:", firebaseUser.uid);
+      } else {
+        console.log("Profile created successfully for ID:", firebaseUser.uid);
+      }
+
+      // Ensure user_preferences row exists for the UID
+      const { data: existingPrefs } = await supabase
+        .from("user_preferences")
+        .select("id")
+        .eq("id", firebaseUser.uid)
+        .single();
+
+      if (!existingPrefs) {
+        const { error: prefsError } = await supabase
+          .from("user_preferences")
+          .upsert({
+            id: firebaseUser.uid,
+            theme: "system",
+            email_digest: true,
+            push_notifications: false,
+            task_updates: true,
+            custom_config: {},
+            ai_features: {},
+            groq_api_key: ""
+          });
+        if (prefsError) {
+          console.error("Failed to initialize user preferences:", prefsError.message);
+        }
+      }
+
+      return profile;
+    } catch (err: any) {
+      console.error("Profile sync failed:", err.message || err);
+      throw err;
+    }
+  };
 
   // Sync state with Firebase Auth changes (Session Persistence)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setIsLoading(true);
+      const hasCached = !!localStorage.getItem("hactiq_current_user") || !!localStorage.getItem("gt_user_profile");
+      if (!hasCached) {
+        setIsLoading(true);
+      }
       if (firebaseUser) {
         // Set the active headers for Supabase RLS policies
         setSupabaseAuth(firebaseUser.uid);
 
         try {
-          // Fetch user profile from Supabase
-          let { data: profile, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", firebaseUser.uid)
-            .single();
-
-          if (error || !profile) {
-            // Fallback to creating a profile if it doesn't exist yet
-            const name = firebaseUser.displayName || "User";
-            const email = firebaseUser.email || "";
-            const initials = name.split(/\s+/).map(p => p[0]).join("").toUpperCase().slice(0, 2) || "U";
-            
-            const newProfile = {
-              id: firebaseUser.uid,
-              name,
-              email,
-              avatar: initials,
-              bio: "Product Designer & Developer",
-              avatar_url: firebaseUser.photoURL || ""
-            };
-
-            const { error: insertError } = await supabase.from("profiles").insert(newProfile);
-            if (insertError) console.error("Error creating profile in Supabase:", insertError);
-
-            // Create default preferences
-            await supabase.from("user_preferences").insert({
-              id: firebaseUser.uid,
-              theme: "system",
-              email_digest: true,
-              push_notifications: false,
-              task_updates: true,
-              custom_config: {},
-              ai_features: {},
-              groq_api_key: ""
-            });
-
-            profile = newProfile;
-          }
+          // Sync profile to database and read updated row values
+          const profile = await syncUserProfile(firebaseUser);
 
           if (profile) {
-            let needsUpdate = false;
-            const updates: any = {};
+            const userProfileData: UserProfile = {
+              name: profile.name,
+              email: profile.email,
+              avatar: profile.avatar || "U",
+              bio: profile.bio || "",
+              avatarUrl: profile.avatar_url || ""
+            };
 
-            // Sync Google avatar photoURL if different
-            if (firebaseUser.photoURL && profile.avatar_url !== firebaseUser.photoURL) {
-              updates.avatar_url = firebaseUser.photoURL;
-              profile.avatar_url = firebaseUser.photoURL;
-              needsUpdate = true;
-            }
+            // Save in localStorage for legacy code compatibility
+            localStorage.setItem("hactiq_current_user", JSON.stringify(userProfileData));
+            localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
 
-            // Sync verified email from Firebase Auth link verification
-            if (firebaseUser.email && profile.email !== firebaseUser.email) {
-              updates.email = firebaseUser.email;
-              profile.email = firebaseUser.email;
-              needsUpdate = true;
-            }
-
-            if (needsUpdate) {
-              const { error: updateError } = await supabase
-                .from("profiles")
-                .update(updates)
-                .eq("id", firebaseUser.uid);
-              if (updateError) console.error("Error syncing profile updates to Supabase:", updateError);
-            }
+            setUser(userProfileData);
           }
-
-          const userProfileData: UserProfile = {
-            name: profile.name,
-            email: profile.email,
-            avatar: profile.avatar || "U",
-            bio: profile.bio || "",
-            avatarUrl: profile.avatar_url || ""
-          };
-
-          // Save in localStorage for legacy code compatibility
-          localStorage.setItem("hactiq_current_user", JSON.stringify(userProfileData));
-          localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
-
-          setUser(userProfileData);
         } catch (err) {
           console.error("Failed to load or initialize user profile:", err);
         }
@@ -169,35 +209,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Set Firebase Auth display name
       await updateProfile(firebaseUser, { displayName: name });
 
-      // 3. Create profile in Supabase (will trigger state update in onAuthStateChanged)
-      const initials = name.split(/\s+/).map(p => p[0]).join("").toUpperCase().slice(0, 2) || "U";
-      
       // Explicitly set Supabase header first for the insert to succeed
       setSupabaseAuth(firebaseUser.uid);
 
-      const newProfile = {
-        id: firebaseUser.uid,
-        name,
-        email,
-        avatar: initials,
-        bio: "Product Designer & Developer",
-        avatar_url: ""
+      // 3. Sync profile immediately with name override
+      const updatedUser = {
+        ...firebaseUser,
+        displayName: name
       };
-
-      const { error: insertError } = await supabase.from("profiles").insert(newProfile);
-      if (insertError) throw insertError;
-
-      // Create default preferences
-      await supabase.from("user_preferences").insert({
-        id: firebaseUser.uid,
-        theme: "system",
-        email_digest: true,
-        push_notifications: false,
-        task_updates: true,
-        custom_config: {},
-        ai_features: {},
-        groq_api_key: ""
-      });
+      await syncUserProfile(updatedUser);
 
     } catch (err: any) {
       setIsLoading(false);
@@ -214,41 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ensure Supabase headers are configured
       setSupabaseAuth(firebaseUser.uid);
 
-      // Check if profile exists
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", firebaseUser.uid)
-        .single();
-
-      if (!profile) {
-        const name = firebaseUser.displayName || "Google User";
-        const email = firebaseUser.email || "";
-        const initials = name.split(/\s+/).map(p => p[0]).join("").toUpperCase().slice(0, 2) || "U";
-
-        const newProfile = {
-          id: firebaseUser.uid,
-          name,
-          email,
-          avatar: initials,
-          bio: "Product Designer & Developer",
-          avatar_url: firebaseUser.photoURL || ""
-        };
-
-        await supabase.from("profiles").insert(newProfile);
-
-        // Insert preferences
-        await supabase.from("user_preferences").insert({
-          id: firebaseUser.uid,
-          theme: "system",
-          email_digest: true,
-          push_notifications: false,
-          task_updates: true,
-          custom_config: {},
-          ai_features: {},
-          groq_api_key: ""
-        });
-      }
+      // Upsert profile data on login
+      await syncUserProfile(firebaseUser);
     } catch (err: any) {
       setIsLoading(false);
       throw err;

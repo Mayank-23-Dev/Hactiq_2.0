@@ -9,8 +9,9 @@ export function HomeRoute() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#030213] text-white flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      <div className="min-h-screen bg-transparent text-foreground flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-foreground" />
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono select-none">Loading...</p>
       </div>
     );
   }

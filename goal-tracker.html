@@ -39,6 +39,26 @@
             transform: translateY(0);
             opacity: 1;
         }
+
+        /* Black and white date picker styling overrides */
+        input[type="date"] {
+            outline: none;
+            border-color: #e2e8f0;
+            background-color: #ffffff;
+            color: #030213;
+        }
+        input[type="date"]:focus {
+            border-color: #030213 !important;
+            box-shadow: 0 0 0 1px #030213 !important;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">

@@ -425,13 +425,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const userId = auth.currentUser?.uid;
         if (!userId) return;
 
-        // 1. Fetch user preferences
-        const { data: prefs } = await supabase
-          .from("user_preferences")
-          .select("*")
-          .eq("id", userId)
-          .single();
+        // Fetch preferences, boards, goals, streaks, templates, day metadata, and activities in parallel
+        const [
+          prefsResult,
+          boardsResult,
+          goalsResult,
+          streakGoalsResult,
+          templatesResult,
+          metadataResult,
+          activitiesResult
+        ] = await Promise.all([
+          supabase.from("user_preferences").select("*").eq("id", userId).single(),
+          supabase.from("boards").select("*").eq("user_id", userId),
+          supabase.from("goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+          supabase.from("streak_goals").select("*").eq("user_id", userId),
+          supabase.from("goal_templates").select("*").eq("user_id", userId),
+          supabase.from("day_metadata").select("*").eq("user_id", userId),
+          supabase.from("activities").select("*").eq("user_id", userId).order("timestamp", { ascending: false }).limit(100)
+        ]);
 
+        // 1. Map user preferences
+        const prefs = prefsResult.data;
         if (prefs) {
           if (prefs.groq_api_key) {
             setGroqApiKeyInternal(prefs.groq_api_key);
@@ -444,12 +458,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // 2. Fetch boards
-        const { data: fetchedBoards } = await supabase
-          .from("boards")
-          .select("*")
-          .eq("user_id", userId);
-
+        // 2. Map boards
+        const fetchedBoards = boardsResult.data;
         if (fetchedBoards) {
           const mappedBoards = fetchedBoards.map(b => ({
             id: b.id,
@@ -461,14 +471,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setBoards(mappedBoards);
         }
 
-        // 3. Fetch columns & tasks
+        // 3. Fetch columns & tasks in parallel using the board IDs
         if (fetchedBoards && fetchedBoards.length > 0) {
           const boardIds = fetchedBoards.map(b => b.id);
-          const { data: fetchedColumns } = await supabase
-            .from("columns")
-            .select("*")
-            .in("board_id", boardIds);
+          const [columnsResult, tasksResult] = await Promise.all([
+            supabase.from("columns").select("*").in("board_id", boardIds),
+            supabase.from("tasks").select("*").in("board_id", boardIds)
+          ]);
           
+          const fetchedColumns = columnsResult.data;
           if (fetchedColumns) {
             setColumns(fetchedColumns.map(c => ({
               id: c.id,
@@ -477,11 +488,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             })));
           }
 
-          const { data: fetchedTasks } = await supabase
-            .from("tasks")
-            .select("*")
-            .in("board_id", boardIds);
-
+          const fetchedTasks = tasksResult.data;
           if (fetchedTasks) {
             setTasks(fetchedTasks.map(t => ({
               id: t.id,
@@ -503,13 +510,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setTasks([]);
         }
 
-        // 4. Fetch goals
-        const { data: fetchedGoals } = await supabase
-          .from("goals")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
-
+        // 4. Map goals
+        const fetchedGoals = goalsResult.data;
         if (fetchedGoals) {
           setGoals(fetchedGoals.map(g => ({
             id: g.id,
@@ -524,12 +526,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })));
         }
 
-        // 5. Fetch streak goals
-        const { data: fetchedStreakGoals } = await supabase
-          .from("streak_goals")
-          .select("*")
-          .eq("user_id", userId);
-
+        // 5. Map streak goals
+        const fetchedStreakGoals = streakGoalsResult.data;
         if (fetchedStreakGoals) {
           setStreakGoals(fetchedStreakGoals.map(sg => ({
             id: sg.id,
@@ -546,12 +544,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })));
         }
 
-        // 6. Fetch templates
-        const { data: fetchedTemplates } = await supabase
-          .from("goal_templates")
-          .select("*")
-          .eq("user_id", userId);
-
+        // 6. Map templates
+        const fetchedTemplates = templatesResult.data;
         if (fetchedTemplates) {
           setTemplates(fetchedTemplates.map(t => ({
             id: t.id,
@@ -562,12 +556,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })));
         }
 
-        // 7. Fetch day metadata
-        const { data: fetchedMetadata } = await supabase
-          .from("day_metadata")
-          .select("*")
-          .eq("user_id", userId);
-
+        // 7. Map day metadata
+        const fetchedMetadata = metadataResult.data;
         if (fetchedMetadata) {
           const metaRecord: Record<string, DayMetadata> = {};
           fetchedMetadata.forEach(m => {
@@ -579,14 +569,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setDailyMetadata(metaRecord);
         }
 
-        // 8. Fetch activities feed
-        const { data: fetchedActivities } = await supabase
-          .from("activities")
-          .select("*")
-          .eq("user_id", userId)
-          .order("timestamp", { ascending: false })
-          .limit(100);
-
+        // 8. Map activities feed
+        const fetchedActivities = activitiesResult.data;
         if (fetchedActivities) {
           setActivities(fetchedActivities.map(act => ({
             id: act.id,
