@@ -5,6 +5,7 @@ import {
   Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useApp } from "../store";
+import { useAuth } from "../../contexts/AuthContext";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { Particles } from "./ui/particles";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
@@ -19,6 +20,7 @@ interface LayoutProps {
 
 export function Layout({ children, title = "Dashboard" }: LayoutProps) {
   const { theme, setTheme, userProfile, getAvatarColor, activities, markAllActivitiesAsRead } = useApp();
+  const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -136,7 +138,14 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
                   <User size={14} /> Profile
                 </button>
                 <div className="my-1 border-t border-border" />
-                <button type="button" className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    logout();
+                    navigate("/", { replace: true });
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left"
+                >
                   <LogOut size={14} /> Log out
                 </button>
               </div>

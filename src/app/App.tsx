@@ -1,7 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router";
 import { Toaster } from "sonner";
 import { AppProvider } from "./store";
-import { AuthProvider } from "../contexts/AuthContext";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { Dashboard } from "./components/Dashboard";
 import { BoardPage } from "./components/Board";
 import Settings from "../pages/Settings";
@@ -16,6 +16,22 @@ import ActivitiesPage from "../pages/ActivitiesPage";
 import WorkspacesPage from "../pages/WorkspacesPage";
 import StatsView from "../pages/StatsView";
 import ArchivePage from "../pages/ArchivePage";
+import LandingPage from "../pages/LandingPage";
+import LoginPage from "../pages/LoginPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+
+function LandingOrDashboard() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Dashboard /> : <LandingPage />;
+}
+
+function ProtectedRoutesLayout() {
+  return (
+    <ProtectedRoute>
+      <Outlet />
+    </ProtectedRoute>
+  );
+}
 
 export default function App() {
   return (
@@ -24,31 +40,35 @@ export default function App() {
         <BackgroundParticles className="fixed inset-0 pointer-events-none z-0" />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/board/:id" element={<BoardPage />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/activities" element={<ActivitiesPage />} />
-            <Route path="/boards" element={<WorkspacesPage />} />
+            <Route path="/" element={<LandingOrDashboard />} />
+            <Route path="/login" element={<LoginPage />} />
             
-            {/* Flat navigation routes */}
-            <Route path="/today" element={<GoalTracker />} />
-            <Route path="/goal-board" element={<GoalBoard />} />
-            <Route path="/streak-goals" element={<StreakGoals />} />
-            <Route path="/yesterday" element={<YesterdayView />} />
-            <Route path="/calendar" element={<CalendarView />} />
-            <Route path="/stats" element={<StatsView />} />
-            <Route path="/archive" element={<ArchivePage />} />
-            <Route path="/templates" element={<TemplatesView />} />
-            
-            {/* Fallback routes for legacy paths */}
-            <Route path="/goals" element={<GoalTracker />} />
-            <Route path="/goals/streaks" element={<StreakGoals />} />
-            <Route path="/goals/yesterday" element={<YesterdayView />} />
-            <Route path="/goals/calendar" element={<CalendarView />} />
-            <Route path="/goals/stats" element={<StatsView />} />
-            <Route path="/goals/database" element={<ArchivePage />} />
-            <Route path="/goals/templates" element={<TemplatesView />} />
-            <Route path="/all-goals" element={<ArchivePage />} />
+            <Route element={<ProtectedRoutesLayout />}>
+              <Route path="/board/:id" element={<BoardPage />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/activities" element={<ActivitiesPage />} />
+              <Route path="/boards" element={<WorkspacesPage />} />
+              
+              {/* Flat navigation routes */}
+              <Route path="/today" element={<GoalTracker />} />
+              <Route path="/goal-board" element={<GoalBoard />} />
+              <Route path="/streak-goals" element={<StreakGoals />} />
+              <Route path="/yesterday" element={<YesterdayView />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/stats" element={<StatsView />} />
+              <Route path="/archive" element={<ArchivePage />} />
+              <Route path="/templates" element={<TemplatesView />} />
+              
+              {/* Fallback routes for legacy paths */}
+              <Route path="/goals" element={<GoalTracker />} />
+              <Route path="/goals/streaks" element={<StreakGoals />} />
+              <Route path="/goals/yesterday" element={<YesterdayView />} />
+              <Route path="/goals/calendar" element={<CalendarView />} />
+              <Route path="/goals/stats" element={<StatsView />} />
+              <Route path="/goals/database" element={<ArchivePage />} />
+              <Route path="/goals/templates" element={<TemplatesView />} />
+              <Route path="/all-goals" element={<ArchivePage />} />
+            </Route>
           </Routes>
         </BrowserRouter>
         <Toaster position="bottom-right" richColors />

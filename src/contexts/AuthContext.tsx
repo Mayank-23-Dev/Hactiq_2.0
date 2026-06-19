@@ -12,6 +12,9 @@ export interface UserProfile {
 interface AuthContextType {
   userProfile: UserProfile;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
+  isAuthenticated: boolean;
+  login: () => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -25,6 +28,10 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem("gt_isAuthenticated") === "true";
+  });
+
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
       const stored = localStorage.getItem("gt_user_profile");
@@ -39,6 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     return DEFAULT_PROFILE;
   });
+
+  const login = () => {
+    setIsAuthenticated(true);
+    localStorage.setItem("gt_isAuthenticated", "true");
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem("gt_isAuthenticated");
+    localStorage.removeItem("gt_user_profile");
+    setUserProfile(DEFAULT_PROFILE);
+  };
 
   const updateUserProfile = (updates: Partial<UserProfile>) => {
     setUserProfile(prev => {
@@ -62,13 +81,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error(err);
         }
       }
+      if (e.key === "gt_isAuthenticated") {
+        setIsAuthenticated(e.newValue === "true");
+      }
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ userProfile, updateUserProfile }}>
+    <AuthContext.Provider value={{ userProfile, updateUserProfile, isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
