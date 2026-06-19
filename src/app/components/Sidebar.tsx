@@ -206,7 +206,6 @@ export function Sidebar() {
                   <p className="text-muted-foreground truncate" style={{ fontSize: 10 }}>{userProfile.email}</p>
                 </div>
               </button>
-              
               <button
                 type="button"
                 onClick={handleLogout}

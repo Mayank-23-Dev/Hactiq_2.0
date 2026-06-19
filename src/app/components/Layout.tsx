@@ -330,7 +330,6 @@ Please ask something related to improving your habits or productivity.
                     <p className="text-muted-foreground truncate" style={{ fontSize: 10 }}>{userProfile.email}</p>
                   </div>
                 </button>
-                
                 <button
                   type="button"
                   onClick={handleLogout}

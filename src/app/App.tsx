@@ -15,8 +15,6 @@ import ActivitiesPage from "../pages/ActivitiesPage";
 import WorkspacesPage from "../pages/WorkspacesPage";
 import StatsView from "../pages/StatsView";
 import ArchivePage from "../pages/ArchivePage";
-
-// Authentication pages and components
 import LandingPage from "../pages/LandingPage";
 import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
@@ -83,3 +81,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
