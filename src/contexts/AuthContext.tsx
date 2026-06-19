@@ -1,17 +1,17 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  signInWithRedirect, 
-  getRedirectResult, 
+  signInWithPopup, 
   signOut, 
   onAuthStateChanged, 
-  updateProfile 
+  updateProfile,
+  sendEmailVerification,
+  deleteUser
 } from "firebase/auth";
 import { auth, googleProvider } from "../lib/firebase";
 import { supabase } from "../lib/supabase";
+import { toast } from "sonner";
 
 export interface UserProfile {
   name: string;
@@ -26,6 +26,10 @@ export interface AuthContextType {
   userProfile: UserProfile;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loading: boolean;
+  emailVerified: boolean;
+  creationTime: string | null;
+  resendVerification: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -44,9 +48,6 @@ const DEFAULT_PROFILE: UserProfile = {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const stored = localStorage.getItem("hactiq_current_user") || localStorage.getItem("gt_user_profile");
@@ -55,25 +56,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
   });
-  const [isLoading, setIsLoading] = useState(() => {
-    try {
-      const stored = localStorage.getItem("hactiq_current_user") || localStorage.getItem("gt_user_profile");
-      return !stored;
-    } catch {
-      return true;
-    }
-  });
+
+  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [creationTime, setCreationTime] = useState<string | null>(null);
+
+  // Periodic check for email verification / expiry
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || currentUser.emailVerified) return;
+
+    const checkExpiry = async () => {
+      try {
+        await currentUser.reload();
+      } catch (err) {
+        console.error("Failed to reload user metadata:", err);
+      }
+
+      if (currentUser.emailVerified) {
+        setEmailVerified(true);
+        return;
+      }
+
+      const creationTimeStr = currentUser.metadata.creationTime;
+      const createdAt = creationTimeStr ? new Date(creationTimeStr).getTime() : Date.now();
+      const now = Date.now();
+      const ONE_HOUR = 60 * 60 * 1000;
+
+      if (now - createdAt > ONE_HOUR) {
+        console.log("Unverified account expired (periodic check), deleting user:", currentUser.uid);
+        try {
+          await deleteUser(currentUser);
+        } catch (err) {
+          await signOut(auth);
+        }
+        await supabase.from("profiles").delete().eq("id", currentUser.uid);
+        setUser(null);
+        setEmailVerified(false);
+        setCreationTime(null);
+        toast.error("Your account was not verified in time and has been removed. Please sign up again.");
+      }
+    };
+
+    const interval = setInterval(checkExpiry, 60000); // Check every 60 seconds
+    return () => clearInterval(interval);
+  }, [user, emailVerified]);
 
   // Safety timeout: prevent stuck/infinite loading screen if Firebase/Supabase queries hang
   useEffect(() => {
-    if (isLoading) {
+    if (loading) {
       const timer = setTimeout(() => {
         console.warn("Auth loading safety timeout triggered. Forcing loading state to resolve.");
-        setIsLoading(false);
+        setLoading(false);
       }, 5000); // 5 seconds safety timeout
       return () => clearTimeout(timer);
     }
-  }, [isLoading]);
+  }, [loading]);
 
   // Helper function to upsert profile info securely in Supabase public.profiles
   const syncUserProfile = async (firebaseUser: any) => {
@@ -133,7 +172,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email_digest: true,
             push_notifications: false,
             task_updates: true,
-            custom_config: {},
+            custom_config: !existingProfile ? {
+              boardStages: [
+                { id: "todo", name: "todo", order: 1 },
+                { id: "in-progress", name: "Inprogress", order: 2 },
+                { id: "done", name: "Done", order: 3 }
+              ]
+            } : {},
             ai_features: {},
             groq_api_key: ""
           });
@@ -156,81 +201,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!hasCached) {
         setIsLoading(true);
       }
-      if (firebaseUser) {
-        try {
-          // Sync profile to database and read updated row values
-          const profile = await syncUserProfile(firebaseUser);
+      try {
+        if (firebaseUser) {
+          // Check if unverified and expired
+          if (!firebaseUser.emailVerified) {
+            const creationTimeStr = firebaseUser.metadata.creationTime;
+            const createdAt = creationTimeStr ? new Date(creationTimeStr).getTime() : Date.now();
+            const now = Date.now();
+            const ONE_HOUR = 60 * 60 * 1000;
 
-          if (profile) {
-            const userProfileData: UserProfile = {
-              name: profile.name,
-              email: profile.email,
-              avatar: profile.avatar || "U",
-              bio: profile.bio || "",
-              avatarUrl: profile.avatar_url || ""
-            };
-
-            // Save in localStorage for legacy code compatibility
-            localStorage.setItem("hactiq_current_user", JSON.stringify(userProfileData));
-            localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
-
-            setUser(userProfileData);
-
-            // Redirect authenticated users away from login/register routes to the main dashboard
-            if (["/login", "/register"].includes(location.pathname)) {
-              navigate("/");
+            if (now - createdAt > ONE_HOUR) {
+              console.log("Unverified account expired, deleting user:", firebaseUser.uid);
+              try {
+                await deleteUser(firebaseUser);
+              } catch (err) {
+                await signOut(auth);
+              }
+              await supabase.from("profiles").delete().eq("id", firebaseUser.uid);
+              setUser(null);
+              setEmailVerified(false);
+              setCreationTime(null);
+              setIsLoading(false);
+              setLoading(false);
+              toast.error("Your account was not verified in time and has been removed. Please sign up again.");
+              return;
             }
           }
-        } catch (err) {
-          console.error("Failed to load or initialize user profile:", err);
+
+          setEmailVerified(firebaseUser.emailVerified);
+          setCreationTime(firebaseUser.metadata.creationTime || null);
+
+          try {
+            // Sync profile to database and read updated row values
+            const profile = await syncUserProfile(firebaseUser);
+
+            if (profile) {
+              const userProfileData: UserProfile = {
+                name: profile.name,
+                email: profile.email,
+                avatar: profile.avatar || "U",
+                bio: profile.bio || "",
+                avatarUrl: profile.avatar_url || ""
+              };
+
+              // Save in localStorage for legacy code compatibility
+              localStorage.setItem("hactiq_current_user", JSON.stringify(userProfileData));
+              localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
+
+              setUser(userProfileData);
+            }
+          } catch (err) {
+            console.error("Failed to load or initialize user profile:", err);
+          }
+        } else {
+          localStorage.removeItem("hactiq_current_user");
+          localStorage.removeItem("gt_user_profile");
+          setUser(null);
+          setEmailVerified(false);
+          setCreationTime(null);
         }
-      } else {
-        localStorage.removeItem("hactiq_current_user");
-        localStorage.removeItem("gt_user_profile");
-        setUser(null);
+      } finally {
+        setIsLoading(false);
+        setLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [location.pathname, navigate]);
-
-  // Handle redirect result on mount
-  useEffect(() => {
-    const handleRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          console.log("Google redirect sign-in successful:", result.user);
-          
-          // Sync profile to database
-          const profile = await syncUserProfile(result.user);
-          
-          if (profile) {
-            const userProfileData: UserProfile = {
-              name: profile.name,
-              email: profile.email,
-              avatar: profile.avatar || "U",
-              bio: profile.bio || "",
-              avatarUrl: profile.avatar_url || ""
-            };
-
-            // Save in localStorage for legacy code compatibility
-            localStorage.setItem("hactiq_current_user", JSON.stringify(userProfileData));
-            localStorage.setItem("gt_user_profile", JSON.stringify(userProfileData));
-
-            setUser(userProfileData);
-          }
-
-          // Explicitly navigate to the app's main route
-          navigate("/");
-        }
-      } catch (err: any) {
-        console.error("Error during Google redirect resolution:", err);
-      }
-    };
-    handleRedirect();
-  }, [navigate]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -249,10 +286,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
 
-      // 2. Set Firebase Auth display name
+      // 2. Send verification email
+      await sendEmailVerification(firebaseUser);
+      toast.info("Verification email sent. Please verify within 1 hour or your account will be removed.", {
+        duration: 8000,
+      });
+
+      // 3. Set Firebase Auth display name
       await updateProfile(firebaseUser, { displayName: name });
 
-      // 3. Sync profile immediately with name override
+      // 4. Sync profile immediately with name override
       const updatedUser = {
         ...firebaseUser,
         displayName: name
@@ -268,7 +311,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
       setIsLoading(false);
       throw err;
@@ -326,6 +369,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resendVerification = async () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const lastSent = localStorage.getItem("hactiq_last_verification_sent");
+      const now = Date.now();
+      if (lastSent && now - parseInt(lastSent) < 60 * 1000) {
+        toast.warning("Please wait 1 minute before resending verification email.");
+        return;
+      }
+      try {
+        await sendEmailVerification(currentUser);
+        localStorage.setItem("hactiq_last_verification_sent", now.toString());
+        toast.success("Verification email sent!");
+      } catch (err: any) {
+        toast.error(err.message || "Failed to send verification email.");
+      }
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -333,6 +395,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userProfile: user || DEFAULT_PROFILE,
         isAuthenticated: !!user,
         isLoading,
+        loading,
+        emailVerified,
+        creationTime,
+        resendVerification,
         login,
         signup,
         loginWithGoogle,

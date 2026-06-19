@@ -18,6 +18,7 @@ import ArchivePage from "../pages/ArchivePage";
 import LandingPage from "../pages/LandingPage";
 import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
+import AuthActionPage from "../pages/AuthActionPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { HomeRoute } from "./components/HomeRoute";
 
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/" element={<HomeRoute />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<SignupPage />} />
+            <Route path="/auth/action" element={<AuthActionPage />} />
 
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>

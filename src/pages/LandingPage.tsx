@@ -128,8 +128,8 @@ export default function LandingPage() {
       <header className="sticky top-0 w-full z-50 backdrop-blur-md bg-black/40 border-b border-white/5 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center p-1.5 shadow-inner">
-              <img src="/logo.svg" alt="Hactiq Logo" className="w-full h-full object-contain invert" />
+            <div className="w-8 h-8 flex items-center justify-center bg-transparent">
+              <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 object-contain invert" />
             </div>
             <span className="font-display font-bold tracking-tight text-lg text-white">Hactiq</span>
           </div>

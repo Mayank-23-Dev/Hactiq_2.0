@@ -2,6 +2,7 @@
 import React from "react";
 import { useApp } from "../../store";
 import { Label } from "@/app/components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/app/components/ui/select";
 import { Plus, Trash2, ChevronUp, ChevronDown, Sliders } from "lucide-react";
 
 interface ConfigItem {
@@ -194,43 +195,51 @@ export function CustomizationTab() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Category</Label>
-                    <select
-                      value={t.defaultCategoryId}
-                      onChange={(e) => {
+                    <Select
+                      value={t.defaultCategoryId || "none"}
+                      onValueChange={(val) => {
                         const newList = customConfig.personaTemplates.map((x) =>
-                          x.id === t.id ? { ...x, defaultCategoryId: e.target.value } : x
+                          x.id === t.id ? { ...x, defaultCategoryId: val === "none" ? "" : val } : x
                         );
                         updateCustomConfig({ personaTemplates: newList });
                       }}
-                      className="w-full px-2 py-1.5 bg-background border border-border rounded text-[10px] outline-none text-foreground focus:border-primary"
                     >
-                      <option value="" className="bg-card text-foreground">None</option>
-                      {customConfig.categories.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-card text-foreground">
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full h-8 text-[10px] px-2 bg-background border-border rounded text-foreground focus:border-primary">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {customConfig.categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Priority</Label>
-                    <select
-                      value={t.defaultPriorityId}
-                      onChange={(e) => {
+                    <Select
+                      value={t.defaultPriorityId || "none"}
+                      onValueChange={(val) => {
                         const newList = customConfig.personaTemplates.map((x) =>
-                          x.id === t.id ? { ...x, defaultPriorityId: e.target.value } : x
+                          x.id === t.id ? { ...x, defaultPriorityId: val === "none" ? "" : val } : x
                         );
                         updateCustomConfig({ personaTemplates: newList });
                       }}
-                      className="w-full px-2 py-1.5 bg-background border border-border rounded text-[10px] outline-none text-foreground focus:border-primary"
                     >
-                      <option value="" className="bg-card text-foreground">None</option>
-                      {customConfig.priorities.map((p) => (
-                        <option key={p.id} value={p.id} className="bg-card text-foreground">
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full h-8 text-[10px] px-2 bg-background border-border rounded text-foreground focus:border-primary">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {customConfig.priorities.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="space-y-1">

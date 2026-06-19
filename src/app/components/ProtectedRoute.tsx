@@ -4,9 +4,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
 export function ProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-transparent text-foreground flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-foreground" />
@@ -15,7 +15,7 @@ export function ProtectedRoute() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 

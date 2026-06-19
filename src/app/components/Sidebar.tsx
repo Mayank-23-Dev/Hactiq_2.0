@@ -67,7 +67,7 @@ export function Sidebar() {
       >
         {/* Logo and Toggle */}
         <div className={`flex ${!isCollapsed ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
-          <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
+          <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain dark:invert" />
           {!isCollapsed && (
             <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
           )}
@@ -89,7 +89,7 @@ export function Sidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {navItems.map((item) => {
             const Icon = item.icon;
             const badge = item.label === "Activities" ? unreadCount : undefined;

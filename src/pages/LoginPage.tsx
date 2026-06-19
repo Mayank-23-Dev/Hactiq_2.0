@@ -1,23 +1,29 @@
 // src/pages/LoginPage.tsx
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link, Navigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Home } from "lucide-react";
 
 export default function LoginPage() {
-  const { login, loginWithGoogle, isAuthenticated, isLoading } = useAuth();
+  const { login, loginWithGoogle, user, loading, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/");
-    }
-  }, [isAuthenticated, navigate]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono select-none">Loading...</p>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +54,15 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen text-white flex items-center justify-center p-4 overflow-hidden">
+      {/* Home button absolute top-left */}
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] active:bg-white/[0.12] text-xs font-medium text-gray-400 hover:text-white transition-all cursor-pointer select-none"
+      >
+        <Home className="w-3.5 h-3.5" />
+        <span>Home</span>
+      </button>
+
       <div className="fixed inset-0 bg-black -z-20" />
       {/* Subtle Monochrome Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/[0.02] rounded-full blur-[140px] pointer-events-none" />
@@ -60,7 +75,7 @@ export default function LoginPage() {
             onClick={() => navigate("/")} 
             className="mb-4 flex items-center justify-center w-12 h-12 rounded-xl bg-white/[0.02] border border-white/10 shadow-inner cursor-pointer"
           >
-            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 object-contain" />
+            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 object-contain invert" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-white">
             Welcome Back

@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
-  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight, Bot, Send, Trash2, Loader2
+  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight, Bot, Send, Trash2, Loader2, AlertTriangle, RefreshCw
 } from "lucide-react";
 import { useApp } from "../store";
 import { useAuth } from "../../contexts/AuthContext";
@@ -192,7 +192,7 @@ Please ask something related to improving your habits or productivity.
         >
           {/* Logo and Toggle */}
           <div className={`flex ${!isCollapsed ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
-            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain" />
+            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain dark:invert" />
             {!isCollapsed && (
               <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
             )}
@@ -231,33 +231,7 @@ Please ask something related to improving your habits or productivity.
               );
             })}
 
-            {/* Global Hactiq Coach Sidebar Trigger */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setIsCoachOpen(prev => !prev)}
-                  className={`group flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative cursor-pointer ${
-                    isCollapsed ? "justify-center" : ""
-                  } ${
-                    isCoachOpen 
-                      ? "bg-primary/10 text-primary border-l-2 border-primary pl-2.5"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                  }`}
-                  aria-label="Toggle Hactiq Coach"
-                >
-                  <div className="relative flex items-center shrink-0">
-                    <Bot size={16} />
-                  </div>
-                  {!isCollapsed && <span className="flex-1 truncate">Hactiq Coach</span>}
-                </button>
-              </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right">
-                  Hactiq Coach
-                </TooltipContent>
-              )}
-            </Tooltip>
+
           </nav>
 
           {/* User Profile Section */}
@@ -406,11 +380,16 @@ Please ask something related to improving your habits or productivity.
           </header>
 
           {/* Content */}
-          <main className="flex-1 overflow-y-auto relative z-10 bg-transparent">
-            {children}
+          <main className="flex-1 overflow-y-auto relative z-10 bg-transparent flex flex-col">
+            <EmailVerificationBanner />
+            <div className="flex-1">
+              {children}
+            </div>
           </main>
         </div>
       </div>
+
+
 
       {/* Floating Hactiq Coach Trigger Button (Intercom-like) */}
       {!isCoachOpen && (
@@ -551,4 +530,65 @@ function NavItem({ to, icon, label, active, collapsed, badge }: {
   }
 
   return link;
+}
+
+function EmailVerificationBanner() {
+  const { user, emailVerified, creationTime, resendVerification } = useAuth();
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  useEffect(() => {
+    if (!user || emailVerified || !creationTime || isDismissed) return;
+
+    const ONE_HOUR = 60 * 60 * 1000;
+    const createdAt = new Date(creationTime).getTime();
+    const expiresAt = createdAt + ONE_HOUR;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = expiresAt - now;
+
+      if (diff <= 0) {
+        setTimeLeft("expired");
+        return;
+      }
+
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${minutes}m ${seconds}s`);
+    };
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, [user, emailVerified, creationTime, isDismissed]);
+
+  if (!user || emailVerified || !creationTime || isDismissed) return null;
+
+  return (
+    <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2.5 text-xs text-amber-200 flex items-center justify-between gap-4 z-30 select-none animate-in fade-in slide-in-from-top duration-250 shrink-0">
+      <div className="flex items-center gap-2 flex-grow flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+          <span className="leading-snug">
+            Please verify your email within <span className="font-bold text-white font-mono">{timeLeft}</span> or your account will be deleted.
+          </span>
+        </div>
+        <button
+          onClick={resendVerification}
+          className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 hover:text-white font-semibold transition cursor-pointer flex items-center gap-1.5 shrink-0"
+        >
+          <RefreshCw className="w-3 h-3" />
+          <span>Resend verification email</span>
+        </button>
+      </div>
+      <button 
+        onClick={() => setIsDismissed(true)} 
+        className="p-1 rounded-md hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition cursor-pointer shrink-0"
+        title="Dismiss warning"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
 }

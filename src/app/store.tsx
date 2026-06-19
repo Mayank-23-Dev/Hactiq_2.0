@@ -116,8 +116,8 @@ const initialCustomConfig: CustomConfig = {
     { id: "Low", name: "Low", order: 3 }
   ],
   boardStages: [
-    { id: "todo", name: "To Do", order: 1 },
-    { id: "in-progress", name: "In Progress", order: 2 },
+    { id: "todo", name: "todo", order: 1 },
+    { id: "in-progress", name: "Inprogress", order: 2 },
     { id: "done", name: "Done", order: 3 }
   ],
   personaTemplates: [
