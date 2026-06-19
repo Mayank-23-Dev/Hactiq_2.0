@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
-  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight, Bot, Send, Trash2, Loader2, AlertTriangle, RefreshCw
+  Bell, Search, X, ChevronDown, LogOut, User, ChevronLeft, ChevronRight, Bot, Send, Trash2, Loader2, AlertTriangle, RefreshCw, Menu
 } from "lucide-react";
 import { useApp } from "../store";
 import { useAuth } from "../../contexts/AuthContext";
@@ -13,6 +13,176 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./ui/t
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { navItems } from "../../config/navigation";
 import { callGroqAPI } from "../../lib/groq";
+
+interface SidebarInnerProps {
+  isCollapsed: boolean;
+  onToggleSidebar: () => void;
+  isMobile: boolean;
+  onCloseMobileDrawer?: () => void;
+  unreadCount: number;
+  isActive: (path: string) => boolean;
+  userProfile: any;
+  handleLogout: () => void;
+  navigate: any;
+}
+
+function SidebarInner({
+  isCollapsed,
+  onToggleSidebar,
+  isMobile,
+  onCloseMobileDrawer,
+  unreadCount,
+  isActive,
+  userProfile,
+  handleLogout,
+  navigate
+}: SidebarInnerProps) {
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col h-full bg-sidebar">
+      {/* Logo and Toggle/Close */}
+      <div className={`flex ${(!isMobile && !isCollapsed) || isMobile ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
+        <div className="flex items-center gap-2">
+          <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain invert dark:invert-0" />
+          {((!isMobile && !isCollapsed) || isMobile) && (
+            <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
+          )}
+        </div>
+        
+        {isMobile ? (
+          <button
+            type="button"
+            onClick={onCloseMobileDrawer}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0 cursor-pointer"
+            aria-label="Close Sidebar"
+          >
+            <X size={16} />
+          </button>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggleSidebar}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0 cursor-pointer"
+                aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
+                {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const badge = item.label === "Activities" ? unreadCount : undefined;
+          return (
+            <NavItem
+              key={item.path}
+              to={item.path}
+              icon={<Icon size={16} />}
+              label={item.label}
+              active={isActive(item.path)}
+              collapsed={!isMobile && isCollapsed}
+              badge={badge}
+              onClick={isMobile ? onCloseMobileDrawer : undefined}
+            />
+          );
+        })}
+      </nav>
+
+      {/* User Profile Section */}
+      <div className="p-2 border-t border-border relative">
+        {!isMobile && isCollapsed ? (
+          // Collapsed: Avatar only, click toggles side popover
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center justify-center w-full py-2 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer"
+                  aria-label="User Profile Actions"
+                >
+                  <Avatar className="w-8 h-8 shrink-0">
+                    {userProfile.avatarUrl ? (
+                      <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
+                    ) : null}
+                    <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
+                      {userProfile.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {userProfile.name} (Click for options)
+              </TooltipContent>
+            </Tooltip>
+
+            {userMenuOpen && (
+              <div className="absolute bottom-full left-14 mb-1 w-40 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
+                <button 
+                  type="button"
+                  onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left text-foreground cursor-pointer"
+                >
+                  <User size={14} /> Profile
+                </button>
+                <div className="my-1 border-t border-border" />
+                <button 
+                  type="button" 
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left cursor-pointer font-medium"
+                >
+                  <LogOut size={14} /> Log out
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          // Expanded: Full profile summary with Logout button directly available
+          <div className="flex items-center gap-2 w-full px-2 py-2 rounded-md bg-sidebar-accent/30 border border-border/40">
+            <button
+              type="button"
+              onClick={() => { navigate("/settings"); if (isMobile && onCloseMobileDrawer) onCloseMobileDrawer(); }}
+              className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
+              title="Go to settings"
+            >
+              <Avatar className="w-8 h-8 shrink-0">
+                {userProfile.avatarUrl ? (
+                  <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
+                ) : null}
+                <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
+                  {userProfile.avatar}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
+                <p className="text-muted-foreground truncate" style={{ fontSize: 10 }}>{userProfile.email}</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
+              title="Log out"
+              aria-label="Log out"
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,6 +198,7 @@ export function Layout({ children, title = "Dashboard" }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem("hactiq_sidebar_collapsed") === "true";
   });
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   const toggleSidebar = () => {
     setIsCollapsed((prev) => {
@@ -184,146 +355,68 @@ Please ask something related to improving your habits or productivity.
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-background text-foreground overflow-hidden" style={{ fontFamily: "Inter, sans-serif" }}>
-        {/* Sidebar */}
+        
+        {/* Backdrop for mobile drawer */}
+        <div
+          className={`fixed inset-0 z-40 bg-background/80 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
+            isMobileDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
+          onClick={() => setIsMobileDrawerOpen(false)}
+        />
+
+        {/* Mobile drawer container */}
+        <div
+          className={`fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-sidebar transition-transform duration-300 ease-in-out md:hidden ${
+            isMobileDrawerOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <SidebarInner
+            isCollapsed={false}
+            onToggleSidebar={toggleSidebar}
+            isMobile={true}
+            onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
+            unreadCount={unreadCount}
+            isActive={isActive}
+            userProfile={userProfile}
+            handleLogout={handleLogout}
+            navigate={navigate}
+          />
+        </div>
+
+        {/* Desktop Sidebar */}
         <aside
-          className={`relative z-30 flex flex-col border-r border-border bg-sidebar transition-all duration-300 shrink-0 ${
+          className={`hidden md:flex flex-col border-r border-border bg-sidebar transition-all duration-300 shrink-0 ${
             isCollapsed ? "w-16" : "w-60"
           }`}
         >
-          {/* Logo and Toggle */}
-          <div className={`flex ${!isCollapsed ? "items-center justify-between px-4" : "flex-col items-center gap-3 px-2"} py-4 border-b border-border`}>
-            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 shrink-0 object-contain invert dark:invert-0" />
-            {!isCollapsed && (
-              <span className="font-semibold text-sidebar-foreground truncate mr-auto ml-2">Hactiq</span>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={toggleSidebar}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-sidebar-accent shrink-0"
-                  aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                >
-                  {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          {/* Nav */}
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const badge = item.label === "Activities" ? unreadCount : undefined;
-              return (
-                <NavItem
-                  key={item.path}
-                  to={item.path}
-                  icon={<Icon size={16} />}
-                  label={item.label}
-                  active={isActive(item.path)}
-                  collapsed={isCollapsed}
-                  badge={badge}
-                />
-              );
-            })}
-
-
-          </nav>
-
-          {/* User Profile Section */}
-          <div className="p-2 border-t border-border relative">
-            {isCollapsed ? (
-              // Collapsed: Avatar only, click toggles side popover
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center justify-center w-full py-2 rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer"
-                      aria-label="User Profile Actions"
-                    >
-                      <Avatar className="w-8 h-8 shrink-0">
-                        {userProfile.avatarUrl ? (
-                          <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
-                        ) : null}
-                        <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
-                          {userProfile.avatar}
-                        </AvatarFallback>
-                      </Avatar>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {userProfile.name} (Click for options)
-                  </TooltipContent>
-                </Tooltip>
-
-                {userMenuOpen && (
-                  <div className="absolute bottom-full left-14 mb-1 w-40 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
-                    <button 
-                      type="button"
-                      onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors text-left text-foreground cursor-pointer"
-                    >
-                      <User size={14} /> Profile
-                    </button>
-                    <div className="my-1 border-t border-border" />
-                    <button 
-                      type="button" 
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-accent transition-colors text-left cursor-pointer font-medium"
-                    >
-                      <LogOut size={14} /> Log out
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              // Expanded: Full profile summary with Logout button directly available
-              <div className="flex items-center gap-2 w-full px-2 py-2 rounded-md bg-sidebar-accent/30 border border-border/40">
-                <button
-                  type="button"
-                  onClick={() => navigate("/settings")}
-                  className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
-                  title="Go to settings"
-                >
-                  <Avatar className="w-8 h-8 shrink-0">
-                    {userProfile.avatarUrl ? (
-                      <AvatarImage src={userProfile.avatarUrl} alt={userProfile.name} className="object-cover" />
-                    ) : null}
-                    <AvatarFallback className="text-xs font-semibold bg-muted text-foreground">
-                      {userProfile.avatar}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.name}</p>
-                    <p className="text-muted-foreground truncate" style={{ fontSize: 10 }}>{userProfile.email}</p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
-                  title="Log out"
-                  aria-label="Log out"
-                >
-                  <LogOut size={15} />
-                </button>
-              </div>
-            )}
-          </div>
+          <SidebarInner
+            isCollapsed={isCollapsed}
+            onToggleSidebar={toggleSidebar}
+            isMobile={false}
+            unreadCount={unreadCount}
+            isActive={isActive}
+            userProfile={userProfile}
+            handleLogout={handleLogout}
+            navigate={navigate}
+          />
         </aside>
 
         {/* Main */}
         <div className="flex-1 flex flex-col min-w-0 relative bg-background">
           <Particles className="absolute inset-0 z-0 opacity-40 dark:opacity-20 pointer-events-none" />
+          
           {/* Topbar */}
-          <header className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background/80 backdrop-blur shrink-0 relative z-10">
-            <h1 className="font-semibold text-foreground">{title}</h1>
+          <header className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-3 border-b border-border bg-background/80 backdrop-blur shrink-0 relative z-10">
+            {/* Hamburger button on mobile */}
+            <button
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="p-1.5 -ml-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-sidebar-accent transition-colors cursor-pointer md:hidden shrink-0"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={20} />
+            </button>
+
+            <h1 className="font-semibold text-foreground truncate">{title}</h1>
             <div className="flex-1" />
 
             {/* Search */}
@@ -404,7 +497,7 @@ Please ask something related to improving your habits or productivity.
 
       {/* Sliding Hactiq Coach Panel */}
       {isCoachOpen && (
-        <div className="fixed top-0 right-0 h-full w-[380px] sm:w-[420px] bg-card border-l border-border backdrop-blur-md shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
+        <div className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-card border-l border-border backdrop-blur-md shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
           {/* Header */}
           <div className="p-4 border-b border-border flex items-center justify-between bg-muted/35">
             <div className="flex items-center gap-2">
@@ -487,12 +580,13 @@ Please ask something related to improving your habits or productivity.
   );
 }
 
-function NavItem({ to, icon, label, active, collapsed, badge }: {
-  to: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; badge?: number;
+function NavItem({ to, icon, label, active, collapsed, badge, onClick }: {
+  to: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean; badge?: number; onClick?: () => void;
 }) {
   const link = (
     <Link
       to={to}
+      onClick={onClick}
       className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
         collapsed ? "justify-center" : ""
       } ${
