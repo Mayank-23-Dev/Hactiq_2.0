@@ -7,21 +7,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase credentials missing from environment configuration.");
 }
 
-export let supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
-
-export function createAuthenticatedSupabaseClient(token: string) {
-  const client = createClient(supabaseUrl || "", supabaseAnonKey || "", {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  });
-  supabase = client;
-  return client;
-}
-
-export function resetSupabaseClient() {
-  supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
-}
+export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
 

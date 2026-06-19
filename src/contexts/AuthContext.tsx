@@ -10,7 +10,7 @@ import {
   updateProfile 
 } from "firebase/auth";
 import { auth, googleProvider } from "../lib/firebase";
-import { supabase, createAuthenticatedSupabaseClient, resetSupabaseClient } from "../lib/supabase";
+import { supabase } from "../lib/supabase";
 
 export interface UserProfile {
   name: string;
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isLoading]);
 
   // Helper function to upsert profile info securely in Supabase public.profiles
-  const syncUserProfile = async (firebaseUser: any, supabaseClient: any) => {
+  const syncUserProfile = async (firebaseUser: any) => {
     try {
       const name = firebaseUser.displayName ?? "User";
       const email = firebaseUser.email ?? "";
@@ -89,14 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       // Check if the profile exists to differentiate between create/update events in logs
-      const { data: existingProfile } = await supabaseClient
+      const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", firebaseUser.uid)
         .single();
 
       // Upsert profile data
-      const { data: profile, error: upsertError } = await supabaseClient
+      const { data: profile, error: upsertError } = await supabase
         .from("profiles")
         .upsert(profilePayload, { onConflict: "id" })
         .select()
@@ -114,14 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Ensure user_preferences row exists for the UID
-      const { data: existingPrefs } = await supabaseClient
+      const { data: existingPrefs } = await supabase
         .from("user_preferences")
         .select("id")
         .eq("id", firebaseUser.uid)
         .single();
 
       if (!existingPrefs) {
-        const { error: prefsError } = await supabaseClient
+        const { error: prefsError } = await supabase
           .from("user_preferences")
           .upsert({
             id: firebaseUser.uid,
@@ -154,14 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (firebaseUser) {
         try {
-          // Get the Firebase ID token, forcing a refresh to get a fresh one
-          const token = await firebaseUser.getIdToken(true);
-          
-          // Create the authenticated client using the Firebase JWT token directly
-          const authSupabase = createAuthenticatedSupabaseClient(token);
-
-          // Sync profile to database and read updated row values using the authenticated client
-          const profile = await syncUserProfile(firebaseUser, authSupabase);
+          // Sync profile to database and read updated row values
+          const profile = await syncUserProfile(firebaseUser);
 
           if (profile) {
             const userProfileData: UserProfile = {
@@ -185,7 +179,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("hactiq_current_user");
         localStorage.removeItem("gt_user_profile");
         setUser(null);
-        resetSupabaseClient();
       }
       setIsLoading(false);
     });
@@ -228,18 +221,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Set Firebase Auth display name
       await updateProfile(firebaseUser, { displayName: name });
 
-      // Get Firebase ID token, forcing a refresh to get a fresh one
-      const token = await firebaseUser.getIdToken(true);
-
-      // Create the authenticated client using the Firebase JWT token directly
-      const authSupabase = createAuthenticatedSupabaseClient(token);
-
       // 3. Sync profile immediately with name override
       const updatedUser = {
         ...firebaseUser,
         displayName: name
       };
-      await syncUserProfile(updatedUser, authSupabase);
+      await syncUserProfile(updatedUser);
 
     } catch (err: any) {
       setIsLoading(false);
