@@ -107,7 +107,7 @@ export default function AuthActionPage() {
             onClick={() => navigate("/")} 
             className="mb-4 flex items-center justify-center w-12 h-12 rounded-xl bg-white/[0.02] border border-white/10 shadow-inner cursor-pointer"
           >
-            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 object-contain invert" />
+            <img src="/logo.svg" alt="Hactiq Logo" className="w-8 h-8 object-contain" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-white">
             {mode === "verifyEmail" ? "Verify Email" : mode === "resetPassword" ? "Reset Password" : "Account Verification"}
