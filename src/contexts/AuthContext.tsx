@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult, 
   signOut, 
   onAuthStateChanged, 
   updateProfile 
@@ -152,10 +153,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
       }
       if (firebaseUser) {
-        // Set the active headers for Supabase RLS policies
-        setSupabaseAuth(firebaseUser.uid);
-
         try {
+          // Get the Firebase ID token
+          const token = await firebaseUser.getIdToken();
+          
+          // Set the active headers for Supabase RLS policies (including Bearer token)
+          setSupabaseAuth(firebaseUser.uid, token);
+          
+          // Establish the session in supabase.auth using the Firebase JWT
+          await supabase.auth.setSession({
+            access_token: token,
+            refresh_token: "",
+          });
+
           // Sync profile to database and read updated row values
           const profile = await syncUserProfile(firebaseUser);
 
@@ -189,6 +199,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  // Handle redirect result on mount
+  useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log("Google redirect sign-in successful:", result.user);
+        }
+      } catch (err: any) {
+        console.error("Error during Google redirect resolution:", err);
+      }
+    };
+    handleRedirect();
+  }, []);
+
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -209,8 +234,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 2. Set Firebase Auth display name
       await updateProfile(firebaseUser, { displayName: name });
 
-      // Explicitly set Supabase header first for the insert to succeed
-      setSupabaseAuth(firebaseUser.uid);
+      // Explicitly set Supabase header and session first for the insert to succeed
+      const token = await firebaseUser.getIdToken();
+      setSupabaseAuth(firebaseUser.uid, token);
+      await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: "",
+      });
 
       // 3. Sync profile immediately with name override
       const updatedUser = {
@@ -228,14 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
-      const userCredential = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = userCredential.user;
-      
-      // Ensure Supabase headers are configured
-      setSupabaseAuth(firebaseUser.uid);
-
-      // Upsert profile data on login
-      await syncUserProfile(firebaseUser);
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
       setIsLoading(false);
       throw err;

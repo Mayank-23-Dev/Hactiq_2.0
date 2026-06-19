@@ -9,12 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export let supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
 
-export function setSupabaseAuth(userId: string) {
+export function setSupabaseAuth(userId: string, token?: string) {
+  const headers: Record<string, string> = {
+    "x-user-id": userId,
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
     global: {
-      headers: {
-        "x-user-id": userId,
-      },
+      headers,
     },
   });
 }
